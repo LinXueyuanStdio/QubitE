@@ -24,12 +24,11 @@
 #    - get_dataset(dataset_name: str, custom_dataset_path=None)
 # 3. custom dataset
 
+import os
 import shutil
 import tarfile
-import pickle
-import os
-import zipfile
 import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Dict
 
