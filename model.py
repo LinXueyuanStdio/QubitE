@@ -64,9 +64,12 @@ class QubitE(nn.Module):
         t = self.mul(h, r)
         t = self.proj_t(t)
 
-        E = self.proj_h(self.E.get_embeddings())
+        E = self.E.get_embeddings()
+        E = self.norm(E)
+        E = self.proj_h(E)
+        # E = self.E_bn(E)
 
-        score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.norm(E))))
+        score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
         score_a_a, score_a_b = score_a
         y_a = score_a_a + score_a_b
         y_a = y_a + self.b_x.expand_as(y_a)
