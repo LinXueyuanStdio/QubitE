@@ -101,11 +101,71 @@ class QubitMult(nn.Module):
         self.norm = QubitNorm()
 
     def forward(self, h: Qubit, r: Qubit) -> Qubit:
-        h_a, h_b = self.norm(h)
-        r_a, r_b = self.norm(r)
+        if self.norm_flag:
+            h_a, h_b = self.norm(h)
+            r_a, r_b = self.norm(r)
+        else:
+            h_a, h_b = h
+            r_a, r_b = r
         a = self.complex_sub(self.complex_mul(h_a, r_a), self.complex_mul(h_b, self.complex_conj(r_b)))
         b = self.complex_add(self.complex_mul(h_a, r_b), self.complex_mul(h_b, self.complex_conj(r_a)))
         return a, b
+
+
+class QubitUnitaryMult(nn.Module):
+    """
+    U[r] = [[r_a, -^r_b],
+            [r_b, ^r_a ]]  ^ is conj
+    ^U[r] = [[^r_a, ^r_b],
+            [-r_b, r_a ]]  ^ is conj
+    h = [h_a, h_b]
+
+    h_a, h_b in CP^d
+    r_a, r_b in CP^d
+
+    h * r = U[r] * h * ^U[r]
+    """
+
+    def __init__(self, norm_flag=False):
+        super(QubitUnitaryMult, self).__init__()
+        self.norm_flag = norm_flag
+        self.complex_mul = ComplexMult(False)
+        self.complex_add = ComplexAdd()
+        self.complex_sub = ComplexSubstract()
+        self.complex_div = ComplexDiv()
+        self.complex_conj = ComplexConjugate()
+        self.norm = QubitNorm()
+
+    def forward(self, h: Qubit, r: Qubit) -> Qubit:
+        if self.norm_flag:
+            h_a, h_b = self.norm(h)
+            r_a, r_b = self.norm(r)
+        else:
+            h_a, h_b = h
+            r_a, r_b = r
+        a = self.complex_sub(self.complex_mul(h_a, r_a), self.complex_mul(h_b, self.complex_conj(r_b)))
+        b = self.complex_add(self.complex_mul(h_a, r_b), self.complex_mul(h_b, self.complex_conj(r_a)))
+        a = self.complex_add(self.complex_mul(a, self.complex_conj(r_a)), self.complex_mul(b, self.complex_conj(r_b)))
+        b = self.complex_sub(self.complex_mul(b, r_a), self.complex_mul(a, r_b))
+        return a, b
+
+
+class QubitConjugate(nn.Module):
+    """
+    h = h_a |0} + h_b |1}
+    ^h = ^h_a |0} + ^h_b |1}
+
+    h in C^d
+    r in C^d
+    """
+
+    def __init__(self):
+        super(QubitConjugate, self).__init__()
+        self.complex_conj = ComplexConjugate()
+
+    def forward(self, h):
+        h_a, h_b = h
+        return self.complex_conj(h_a), self.complex_conj(h_b)
 
 
 class QubitScoringAll(nn.Module):
