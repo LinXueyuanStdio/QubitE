@@ -38,8 +38,8 @@ class QubitE(nn.Module):
         self.proj_t = QubitProjection(self.embedding_dim, self.embedding_dim)
         self.norm = QubitNorm()
 
-        self.mul = QubitMult(norm_flag)
-        # self.mul = QubitUnitaryMult(norm_flag)
+        # self.mul = QubitMult(norm_flag)
+        self.mul = QubitUnitaryMult(norm_flag)
         self.scoring_all = QubitScoringAll()
         self.align = ComplexAlign()
         self.regularizer = N3(regularization_weight)
@@ -61,7 +61,7 @@ class QubitE(nn.Module):
         h = self.norm(h)
         r = self.norm(r)
         t = self.mul(h, r)
-        t = self.proj_t(t)
+        # t = self.proj_t(t)
 
         E = self.E.get_embeddings()
         E = self.norm(E)
