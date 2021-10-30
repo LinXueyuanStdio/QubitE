@@ -41,8 +41,6 @@ class MyExperiment(Experiment):
         train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
-        train_triple_data = TripleDataset(train_triples)
-        train_triple_dataloader = DataLoader(train_triple_data, batch_size=batch_size * 2, shuffle=True, num_workers=8, pin_memory=True)
 
         # 2. build valid and test dataset
         all_triples, _, _ = with_inverse_relations(data.all_triples_ids, max_relation_id)
@@ -93,17 +91,8 @@ class MyExperiment(Experiment):
                 # loss = loss + model.regular_loss(h, r)
                 loss.backward()
                 opt.step()
-            for h, r, t in train_triple_dataloader:
-                opt.zero_grad()
 
-                h = h.to(train_device)
-                r = r.to(train_device)
-                t = t.to(train_device)
-                regular_loss = model.regular_loss(h, r, t)
-                regular_loss.backward()
-                opt.step()
-
-            progbar.update(step + 1, [("step", step + 1), ("loss", loss.item()), ("regular_loss", regular_loss.item())])
+            progbar.update(step + 1, [("step", step + 1), ("loss", loss.item())])
             if (step + 1) % every_valid_step == 0:
                 model.eval()
                 with torch.no_grad():
