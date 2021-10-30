@@ -56,8 +56,8 @@ class QubitE(nn.Module):
         h = self.E(e1_idx)
         r = self.R(rel_idx)
         h = self.norm(h)
+        r = self.norm(r)
         t = self.mul(h, r)
-        t = self.norm(t)
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.norm(self.E.get_embeddings()))))
         score_a_a, score_a_b = score_a
@@ -77,14 +77,17 @@ class QubitE(nn.Module):
         y_a, y_b = target
         return self.bce(y_a, y) + self.bce(y_b, y)
 
-    def regular_loss(self, e1_idx, rel_idx):
-        h = self.E(e1_idx)
-        r = self.R(rel_idx)
+    def regular_loss(self, h_idx, r_idx, t_idx):
+        h = self.E(h_idx)
+        r = self.R(r_idx)
+        t = self.E(t_idx)
         (h_a, h_a_i), (h_b, h_b_i) = h
         (r_a, r_a_i), (r_b, r_b_i) = r
+        (t_a, t_a_i), (t_b, t_b_i) = t
         factors = (
             torch.sqrt(h_a ** 2 + h_a_i ** 2 + h_b ** 2 + h_b_i ** 2),
             torch.sqrt(r_a ** 2 + r_a_i ** 2 + r_b ** 2 + r_b_i ** 2),
+            torch.sqrt(t_a ** 2 + t_a_i ** 2 + t_b ** 2 + t_b_i ** 2),
         )
         regular_loss = self.regularizer(factors)
         return regular_loss
@@ -112,11 +115,16 @@ class QubitE(nn.Module):
 
 
 if __name__ == "__main__":
-    h = torch.LongTensor([[i] for i in range(5)])
-    r = torch.LongTensor([[i] for i in range(5)])
-    model = QubitE(10, 10, 5)
+    B = 5
+    E = 10
+    R = 10
+    import random
+    h = torch.LongTensor(random.choices([[i] for i in range(E)], k=B))
+    r = torch.LongTensor(random.choices([[i] for i in range(R)], k=B))
+    t = torch.LongTensor(random.choices([[i] for i in range(E)], k=B))
+    target = torch.rand((B, E))
+    model = QubitE(E, R, 5)
     pred = model(h, r)
     print(pred)
-    print(pred.shape)
-    y = torch.rand_like(pred)
-    print(model.loss(pred, y))
+    print(model.loss(pred, target))
+    print(model.regular_loss(h, r, t))
