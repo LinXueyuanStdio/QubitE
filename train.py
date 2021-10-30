@@ -10,7 +10,6 @@ from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletData
 from toolbox.data.DatasetSchema import FreebaseFB15k_237
 from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
-from toolbox.data.TripleDataset import TripleDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
 from toolbox.evaluate.Evaluate import get_score
 from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict
