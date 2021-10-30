@@ -3,6 +3,7 @@ from typing import List, Tuple
 import torch
 from torch import nn
 
+from toolbox.nn.ComplexAttention import ComplexLinear
 from toolbox.nn.ComplexEmbedding import (
     ComplexEmbedding,
     ComplexDropout,
@@ -117,3 +118,71 @@ class QubitScoringAll(nn.Module):
             b = torch.mm(t_b, e_b[idx].transpose(1, 0))
             out.append((a, b))
         return tuple(out)
+
+
+class QubitProjection(nn.Module):
+    """
+    x = x_a + x_b i
+    W = W_a + W_b i
+    W * x = (W_a * x_a - W_b * x_b) + (W_a * x_b + W_b * x_a) i
+
+    x in C^d, x_a in (B, d), x_b in (B, d)
+    W in C^(d, d_out), W_a in (d, d_out), W_b in (d, d_out)
+    out in C^d_out, out_a in (B, d_out), out_b in (B, d_out)
+    """
+
+    def __init__(self, in_features, out_features):
+        super(QubitProjection, self).__init__()
+        self.W_a = ComplexLinear(in_features, out_features)
+        self.W_b = ComplexLinear(in_features, out_features)
+
+    def forward(self, x):
+        x_a, x_b = x
+        out_a = self.W_a(x_a)
+        out_b = self.W_b(x_b)
+        return out_a, out_b
+
+
+class QubitLinear(nn.Module):
+    """
+    x = x_a + x_b i
+    W = W_a + W_b i
+    W * x = (W_a * x_a - W_b * x_b) + (W_a * x_b + W_b * x_a) i
+
+    x in C^d, x_a in (B, d), x_b in (B, d)
+    W in C^(d, d_out), W_a in (d, d_out), W_b in (d, d_out)
+    out in C^d_out, out_a in (B, d_out), out_b in (B, d_out)
+    """
+
+    def __init__(self, in_features, out_features):
+        super(QubitLinear, self).__init__()
+        self.W_a = ComplexLinear(in_features, out_features)
+        self.W_b = ComplexLinear(in_features, out_features)
+
+    def forward(self, x):
+        x_a, x_b = x
+        out_a = self.W_a(x_a) - self.W_b(x_b)
+        out_b = self.W_a(x_b) + self.W_b(x_a)
+        return out_a, out_b
+
+
+class QubitRealLinear(nn.Module):
+    """
+    x = x_a + x_b i
+    W = W_a + W_b i
+    W * x = (W_a * x_a - W_b * x_b) + (W_a * x_b + W_b * x_a) i
+
+    x in C^d, x_a in (B, d), x_b in (B, d)
+    W in C^(d, d_out), W_a in (d, d_out), W_b in (d, d_out)
+    out in C^d_out, out_a in (B, d_out), out_b in (B, d_out)
+    """
+
+    def __init__(self, in_features, out_features):
+        super(QubitRealLinear, self).__init__()
+        self.W = ComplexLinear(in_features, out_features)
+
+    def forward(self, x):
+        x_a, x_b = x
+        out_a = self.W(x_a)
+        out_b = self.W(x_b)
+        return out_a, out_b

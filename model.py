@@ -9,7 +9,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult
+from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult, QubitProjection
+from toolbox.nn.ComplexAttention import ComplexLinear
 from toolbox.nn.ComplexEmbedding import ComplexAlign
 from toolbox.nn.Regularizer import N3
 
@@ -34,6 +35,9 @@ class QubitE(nn.Module):
         self.R_bn = QubitBatchNorm1d(self.embedding_dim, 2)
         self.b_x = nn.Parameter(torch.zeros(num_entities))
         self.b_y = nn.Parameter(torch.zeros(num_entities))
+        hidden_dim = embedding_dim // 2
+        self.proj_t = QubitProjection(self.embedding_dim, hidden_dim)
+        self.proj_h = QubitProjection(self.embedding_dim, hidden_dim)
         self.norm = QubitNorm()
 
         self.mul = QubitMult(norm_flag)
@@ -58,8 +62,11 @@ class QubitE(nn.Module):
         h = self.norm(h)
         r = self.norm(r)
         t = self.mul(h, r)
+        t = self.proj_t(t)
 
-        score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.norm(self.E.get_embeddings()))))
+        E = self.proj_h(self.E.get_embeddings())
+
+        score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.norm(E))))
         score_a_a, score_a_b = score_a
         y_a = score_a_a + score_a_b
         y_a = y_a + self.b_x.expand_as(y_a)
