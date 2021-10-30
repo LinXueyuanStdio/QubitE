@@ -9,8 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult, QubitProjection, QubitUnitaryMult
-from toolbox.nn.ComplexAttention import ComplexLinear
+from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult
 from toolbox.nn.ComplexEmbedding import ComplexAlign
 from toolbox.nn.Regularizer import N3
 
@@ -35,11 +34,11 @@ class QubitE(nn.Module):
         self.R_bn = QubitBatchNorm1d(self.embedding_dim, 2)
         self.b_x = nn.Parameter(torch.zeros(num_entities))
         self.b_y = nn.Parameter(torch.zeros(num_entities))
-        self.proj_t = QubitProjection(self.embedding_dim, self.embedding_dim)
+        # self.proj_t = QubitProjection(self.embedding_dim, self.embedding_dim)
         self.norm = QubitNorm()
 
-        # self.mul = QubitMult(norm_flag)
-        self.mul = QubitUnitaryMult(norm_flag)
+        self.mul = QubitMult(norm_flag)
+        # self.mul = QubitUnitaryMult(norm_flag)
         self.scoring_all = QubitScoringAll()
         self.align = ComplexAlign()
         self.regularizer = N3(regularization_weight)
@@ -128,6 +127,7 @@ if __name__ == "__main__":
     E = 10
     R = 10
     import random
+
     h = torch.LongTensor(random.choices([[i] for i in range(E)], k=B))
     r = torch.LongTensor(random.choices([[i] for i in range(R)], k=B))
     t = torch.LongTensor(random.choices([[i] for i in range(E)], k=B))
