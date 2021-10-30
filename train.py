@@ -184,7 +184,7 @@ class MyExperiment(Experiment):
 
 @click.command()
 @click.option("--dataset", type=str, default="FB15k-237", help="Which dataset to use: FB15k, FB15k-237, WN18 or WN18RR.")
-@click.option("--name", type=str, default="BoolE", help="Name of the experiment.")
+@click.option("--name", type=str, default="QubitE", help="Name of the experiment.")
 @click.option("--start_step", type=int, default=0, help="start step.")
 @click.option("--max_steps", type=int, default=1000, help="Number of steps.")
 @click.option("--every_test_step", type=int, default=10, help="Number of steps.")
