@@ -66,7 +66,7 @@ class QubitE(nn.Module):
 
         E = self.E.get_embeddings()
         E = self.norm(E)
-        E = self.proj_h(E)
+        # E = self.proj_h(E)
         # E = self.E_bn(E)
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
