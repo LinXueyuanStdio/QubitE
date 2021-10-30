@@ -42,7 +42,7 @@ class MyExperiment(Experiment):
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
         train_triple_data = TripleDataset(train_triples)
-        train_triple_dataloader = DataLoader(train_triple_data, batch_size=batch_size * 2, shuffle=True, num_workers=8, pin_memory=True)
+        train_triple_dataloader = DataLoader(train_triple_data, batch_size=batch_size * 8, shuffle=True, num_workers=8, pin_memory=True)
 
         # 2. build valid and test dataset
         all_triples, _, _ = with_inverse_relations(data.all_triples_ids, max_relation_id)
