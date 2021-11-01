@@ -58,15 +58,15 @@ class QubitE(nn.Module):
         """
         h = self.E(e1_idx)
         r = self.R(rel_idx)
-        h = self.norm(h)
+        # h = self.norm(h)
         h = self.E_bn(h)
         # r = self.norm(r)
-        r = self.R_bn(r)
+        # r = self.R_bn(r)
         t = self.mul(h, r)
         # t = self.proj_t(t)
 
         E = self.E.get_embeddings()
-        E = self.norm(E)
+        # E = self.norm(E)
         # E = self.proj_h(E)
         E = self.E_bn(E)
 
