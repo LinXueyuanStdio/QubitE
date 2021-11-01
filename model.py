@@ -60,7 +60,7 @@ class QubitE(nn.Module):
         r = self.R(rel_idx)
         h = self.norm(h)
         h = self.E_bn(h)
-        r = self.norm(r)
+        # r = self.norm(r)
         r = self.R_bn(r)
         t = self.mul(h, r)
         # t = self.proj_t(t)
