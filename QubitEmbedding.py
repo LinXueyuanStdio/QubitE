@@ -17,6 +17,7 @@ from toolbox.nn.ComplexEmbedding import (
 )
 
 Qubit = Tuple[ComplexNum, ComplexNum]
+QubitMatrix = Tuple[ComplexNum, ComplexNum, ComplexNum, ComplexNum]
 
 
 class QubitEmbedding(nn.Module):
@@ -109,6 +110,35 @@ class QubitMult(nn.Module):
             r_a, r_b = r
         a = self.complex_sub(self.complex_mul(h_a, r_a), self.complex_mul(h_b, self.complex_conj(r_b)))
         b = self.complex_add(self.complex_mul(h_a, r_b), self.complex_mul(h_b, self.complex_conj(r_a)))
+        return a, b
+
+class QubitMatrixMult(nn.Module):
+    """
+    U[r] = [[r_a, r_b],
+            [r_c, r_d ]]  ^ is conj
+    h = [h_a, h_b]
+
+    h_a, h_b in CP^d
+    r_a, r_b in CP^d
+
+    h * r = U[r] * h = [r_a * h_a + -^r_b * h_b, r_b * h_a + ^r_a * h_b]
+    """
+
+    def __init__(self, norm_flag=False):
+        super(QubitMatrixMult, self).__init__()
+        self.norm_flag = norm_flag
+        self.complex_mul = ComplexMult(False)
+        self.complex_add = ComplexAdd()
+        self.complex_sub = ComplexSubstract()
+        self.complex_div = ComplexDiv()
+        self.complex_conj = ComplexConjugate()
+        self.norm = QubitNorm()
+
+    def forward(self, h: Qubit, r: QubitMatrix) -> Qubit:
+        h_a, h_b = h
+        r_a, r_b, r_c, r_d = r
+        a = self.complex_add(self.complex_mul(h_a, r_a), self.complex_mul(h_b, r_b))
+        b = self.complex_add(self.complex_mul(h_a, r_c), self.complex_mul(h_b, r_d))
         return a, b
 
 
