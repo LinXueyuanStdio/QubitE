@@ -100,7 +100,6 @@ class MyExperiment(Experiment):
             if (step + 1) % every_valid_step == 0:
                 model.eval()
                 with torch.no_grad():
-                    print("")
                     self.debug("Validation (step: %d):" % (step + 1))
                     result = self.evaluate(model, valid_data, valid_dataloader, test_batch_size, max_relation_id, test_device)
                     self.visual_result(step + 1, result, "Valid-")
@@ -113,13 +112,14 @@ class MyExperiment(Experiment):
                         self.store.save_best(model, opt, step, 0, score)
                     else:
                         self.fail("current score=%.4f < best score=%.4f" % (score, best_score))
+                print("")
             if (step + 1) % every_test_step == 0:
                 model.eval()
                 with torch.no_grad():
-                    print("")
                     self.debug("Test (step: %d):" % (step + 1))
                     result = self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device)
                     self.visual_result(step + 1, result, "Test-")
+                print("")
 
     def evaluate(self, model, test_data, test_dataloader, test_batch_size, max_relation_id: int, device="cuda:0"):
         data = iter(test_dataloader)
@@ -146,13 +146,10 @@ class MyExperiment(Experiment):
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict2(test_batch_size, len(test_data), predict, log)
         result = as_result_dict((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
-        print("")
         for i in (0, 2, 9):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
-        print("")
-        print("")
         return result
 
     def visual_result(self, step_num: int, result, scope: str):
