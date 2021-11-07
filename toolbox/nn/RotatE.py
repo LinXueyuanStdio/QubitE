@@ -79,15 +79,14 @@ class RotatE(nn.Module):
         )
 
     def forward(self, h_idx, r_idx):
-        h = self.E(h_idx)
-        r = self.R(r_idx)
+        B = h_idx.size(0)
 
-        t = self.mul(h, r)
-        if self.flag_hamilton_mul_norm:
-            score_a, score_b = self.scoring_all(t, self.E.get_embeddings())  # a + b i
-        else:
-            score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.E.get_embeddings())))
-        x = score_a + score_b
+        h = self.E(h_idx).view(B, 1, -1)  # B x 1 x d_e
+        r = self.R(r_idx).view(B, 1, -1)  # B x 1 x d_r
+        E = self.dropout(self.E.weight.repeat(B, 1, 1))  # B x E x d_e
+
+        x = self.core(h, r, E)
+
         x = x + self.b.expand_as(x)
         x = torch.sigmoid(x)
         return x  # batch_size x E
@@ -501,8 +500,8 @@ class ConvQ(nn.Module):
     def forward_head_and_loss(self, h_idx, r_idx, targets):
         return self.loss(self.forward_head_batch(h_idx=h_idx, r_idx=r_idx), targets)
 
-    def forward_tail_and_loss(self, r_idx, e2_idx, targets):
-        return self.loss(self.forward_tail_batch(r_idx=r_idx, e2_idx=e2_idx), targets)
+    def forward_tail_and_loss(self, rel_idx, e2_idx, targets):
+        return self.loss(self.forward_tail_batch(rel_idx=rel_idx, e2_idx=e2_idx), targets)
 
     def init(self):
         nn.init.xavier_normal_(self.emb_ent_real.weight.data)
