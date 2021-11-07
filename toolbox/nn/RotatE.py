@@ -134,7 +134,7 @@ class RotateMult2(nn.Module):
         self.R_dropout = ComplexDropout([input_dropout, input_dropout])
         self.E_bn = ComplexBatchNorm1d(self.embedding_dim, 2)
 
-        self.core = ComplexMult(norm_flag)
+        self.mul = ComplexMult(norm_flag)
 
         self.bce = nn.BCELoss()
         self.b1 = nn.Parameter(torch.zeros(num_entities))
