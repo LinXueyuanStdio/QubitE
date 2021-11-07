@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from toolbox.nn.ComplexEmbedding import ComplexEmbedding, ComplexDropout, ComplexScoringAll
+from toolbox.nn.ComplexEmbedding import ComplexEmbedding, ComplexDropout, ComplexScoringAll, ComplexBatchNorm1d
 
 
 class CoreTuckER(nn.Module):
@@ -76,19 +76,21 @@ class TuckER(nn.Module):
         super(TuckER, self).__init__()
         self.entity_dim = entity_dim
         self.relation_dim = relation_dim
-        self.flag_hamilton_mul_norm = False
+        self.flag_hamilton_mul_norm = True
 
         self.E = ComplexEmbedding(num_entities, entity_dim)
         self.R = ComplexEmbedding(num_relations, relation_dim)
 
         self.core = ComplexTuckER(entity_dim, relation_dim, hidden_dropout)
+        self.E_bn = ComplexBatchNorm1d(entity_dim, 2)
         self.E_dropout = ComplexDropout([input_dropout, input_dropout])
         self.R_dropout = ComplexDropout([input_dropout, input_dropout])
         self.hidden_dp = ComplexDropout([hidden_dropout, hidden_dropout])
 
         self.scoring_all = ComplexScoringAll()
-        self.loss = nn.BCELoss()
-        self.b = nn.Parameter(torch.zeros(num_entities))
+        self.bce = nn.BCELoss()
+        self.b1 = nn.Parameter(torch.zeros(num_entities))
+        self.b2 = nn.Parameter(torch.zeros(num_entities))
 
     def init(self):
         self.E.init()
@@ -104,7 +106,7 @@ class TuckER(nn.Module):
         [score(h,r,x)|x \in Entities] => [0.0,0.1,...,0.8], shape=> (1, |Entities|)
         Given a batch of head entities and relations => shape (size of batch,| Entities|)
         """
-        h = self.E_dropout(self.E(h_idx))
+        h = self.E(h_idx)
         r = self.R(r_idx)
 
         t = self.core(h, r)
@@ -113,8 +115,14 @@ class TuckER(nn.Module):
             score_a, score_b = self.scoring_all(t, self.E.get_embeddings())  # a + b i
         else:
             score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.E.get_embeddings())))
-        x = score_a + score_b
-        x = x + self.b.expand_as(x)
-        x = torch.sigmoid(x)
+        score_a = score_a + self.b1.expand_as(score_a)
+        score_b = score_b + self.b2.expand_as(score_b)
 
-        return x
+        y_a = torch.sigmoid(score_a)
+        y_b = torch.sigmoid(score_b)
+
+        return y_a, y_b
+
+    def loss(self, target, y):
+        y_a, y_b = target
+        return self.bce(y_a, y) + self.bce(y_b, y)

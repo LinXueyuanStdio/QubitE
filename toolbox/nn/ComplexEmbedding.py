@@ -77,7 +77,7 @@ class ComplexDropout(nn.Module):
 
 
 class ComplexBatchNorm1d(nn.Module):
-    def __init__(self, embedding_dim, num_channels):
+    def __init__(self, embedding_dim, num_channels=2):
         super(ComplexBatchNorm1d, self).__init__()
         self.embedding_dim = embedding_dim
         self.num_channels = num_channels
