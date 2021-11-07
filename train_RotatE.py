@@ -14,7 +14,7 @@ from toolbox.evaluate.Evaluate import get_score
 from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
-from toolbox.nn.RotatE import RotatE
+from toolbox.nn.RotatE import RotateMult2
 from toolbox.optim.lr_scheduler import get_scheduler
 from toolbox.utils.Progbar import Progbar
 from toolbox.utils.RandomSeeds import set_seeds
@@ -51,7 +51,7 @@ class MyExperiment(Experiment):
         test_dataloader = DataLoader(test_data, batch_size=test_batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
         # 3. build model
-        model = RotatE(data.entity_count, 2 * data.relation_count, edim).to(train_device)
+        model = RotateMult2(data.entity_count, 2 * data.relation_count, edim).to(train_device)
         opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=amsgrad)
         scheduler = get_scheduler(opt, lr_policy="step")
         best_score = 0
