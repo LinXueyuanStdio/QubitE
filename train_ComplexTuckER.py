@@ -3,7 +3,6 @@ from pathlib import Path
 import click
 import numpy as np
 import torch
-from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletDatasetCachePath
@@ -16,33 +15,9 @@ from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.nn.ComplexTuckER import TuckER
+from toolbox.optim.lr_scheduler import get_scheduler
 from toolbox.utils.Progbar import Progbar
 from toolbox.utils.RandomSeeds import set_seeds
-
-
-def get_scheduler(optimizer, lr_policy="exp", epoch_count=5, lr_decay_iters=25, niter=100, niter_decay=100, ):
-    """Return a learning rate scheduler
-        Parameters:
-        optimizer -- 网络优化器
-        lr_policy -- 学习率scheduler的名称: linear | step | plateau | cosine
-    """
-    if lr_policy == 'linear':
-        def lambda_rule(epoch):
-            lr_l = 1.0 - max(0, epoch + epoch_count - niter) / float(niter_decay + 1)
-            return lr_l
-
-        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
-    elif lr_policy == 'step':
-        scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.5)
-    elif lr_policy == 'plateau':
-        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
-    elif lr_policy == 'cosine':
-        scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=niter, eta_min=0)
-    elif lr_policy == 'exp':
-        scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
-    else:
-        return NotImplementedError('learning rate policy [%s] is not implemented', lr_policy)
-    return scheduler
 
 
 class MyExperiment(Experiment):
@@ -174,6 +149,7 @@ class MyExperiment(Experiment):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+        print("")
         print("")
         return result
 

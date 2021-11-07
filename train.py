@@ -15,6 +15,7 @@ from toolbox.evaluate.Evaluate import get_score
 from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
+from toolbox.optim.lr_scheduler import get_scheduler
 from toolbox.utils.Progbar import Progbar
 from toolbox.utils.RandomSeeds import set_seeds
 
@@ -52,6 +53,7 @@ class MyExperiment(Experiment):
         # 3. build model
         model = QubitE(data.entity_count, 2 * data.relation_count, edim).to(train_device)
         opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=amsgrad)
+        scheduler = get_scheduler(opt, lr_policy="step")
         best_score = 0
         if resume:
             if resume_by_score > 0:
@@ -76,6 +78,7 @@ class MyExperiment(Experiment):
         progbar = Progbar(max_step=max_steps)
         for step in range(start_step, max_steps):
             model.train()
+            losses = []
             for h, r, targets in train_dataloader:
                 opt.zero_grad()
 
@@ -88,10 +91,12 @@ class MyExperiment(Experiment):
                 predictions = model(h, r)
                 loss = model.loss(predictions, targets)
                 # loss = loss + model.regular_loss(h, r)
+                losses.append(loss.item())
                 loss.backward()
                 opt.step()
+            scheduler.step()
 
-            progbar.update(step + 1, [("step", step + 1), ("loss", loss.item())])
+            progbar.update(step + 1, [("step", step + 1), ("loss", torch.mean(torch.Tensor(losses)).item()), ("lr", torch.mean(torch.Tensor(scheduler.get_last_lr())).item())])
             if (step + 1) % every_valid_step == 0:
                 model.eval()
                 with torch.no_grad():
@@ -141,10 +146,13 @@ class MyExperiment(Experiment):
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict2(test_batch_size, len(test_data), predict, log)
         result = as_result_dict((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+        print("")
         for i in (0, 2, 9):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+        print("")
+        print("")
         return result
 
     def visual_result(self, step_num: int, result, scope: str):

@@ -7,7 +7,7 @@
 import torch
 
 
-def get_scheduler(optimizer, lr_policy="exp", epoch_count=5, lr_decay_iters=5, niter=100, niter_decay=100, ):
+def get_scheduler(optimizer, lr_policy="exp", epoch_count=5, lr_decay_iters=25, niter=100, niter_decay=100, ):
     """Return a learning rate scheduler
         Parameters:
         optimizer -- 网络优化器
@@ -20,7 +20,7 @@ def get_scheduler(optimizer, lr_policy="exp", epoch_count=5, lr_decay_iters=5, n
 
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     elif lr_policy == 'step':
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_decay_iters, gamma=0.5)
     elif lr_policy == 'plateau':
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
     elif lr_policy == 'cosine':
