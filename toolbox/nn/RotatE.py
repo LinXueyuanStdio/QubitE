@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from toolbox.nn.ComplexEmbedding import ComplexEmbedding, ComplexDropout, ComplexBatchNorm1d, ComplexScoringAll
+from toolbox.nn.ComplexEmbedding import ComplexEmbedding, ComplexDropout, ComplexBatchNorm1d, ComplexScoringAll, ComplexMult
 
 
 class CoreRotatE(nn.Module):
@@ -114,6 +114,7 @@ def rotate_mul(Q_1, Q_2):
     return r_val, i_val
 
 
+
 class RotateMult2(nn.Module):
 
     def __init__(self,
@@ -125,16 +126,19 @@ class RotateMult2(nn.Module):
         self.embedding_dim = embedding_dim
         self.num_entities = num_entities
         self.num_relations = num_relations
-        self.loss = nn.BCELoss()
+
         self.flag_hamilton_mul_norm = norm_flag
         self.E = ComplexEmbedding(self.num_entities, self.embedding_dim, 2)
         self.R = ComplexEmbedding(self.num_relations, self.embedding_dim, 2)
         self.E_dropout = ComplexDropout([input_dropout, input_dropout])
         self.R_dropout = ComplexDropout([input_dropout, input_dropout])
-        self.hidden_dp = ComplexDropout([hidden_dropout, hidden_dropout])
         self.E_bn = ComplexBatchNorm1d(self.embedding_dim, 2)
-        self.R_bn = ComplexBatchNorm1d(self.embedding_dim, 2)
 
+        self.core = ComplexMult(norm_flag)
+
+        self.bce = nn.BCELoss()
+        self.b1 = nn.Parameter(torch.zeros(num_entities))
+        self.b2 = nn.Parameter(torch.zeros(num_entities))
         self.scoring_all = ComplexScoringAll()
 
     def forward(self, h_idx, r_idx):
@@ -150,14 +154,23 @@ class RotateMult2(nn.Module):
         h = self.E(h_idx)
         r = self.R(r_idx)
 
+        t = self.mul(h, r)
+
         if self.flag_hamilton_mul_norm:
-            t = rotate_mul_with_unit_norm(Q_1=h, Q_2=r)
-            real_score, i_score = self.E.scoring_all(t)
+            score_a, score_b = self.scoring_all(t, self.E.get_embeddings())  # a + b i
         else:
-            t = rotate_mul(Q_1=h, Q_2=self.R_dropout(self.R_bn(r)))
-            real_score, i_score = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.E.get_embeddings())))
-        score = real_score + i_score
-        return torch.sigmoid(score)
+            score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(self.E_bn(self.E.get_embeddings())))
+        score_a = score_a + self.b1.expand_as(score_a)
+        score_b = score_b + self.b2.expand_as(score_b)
+
+        y_a = torch.sigmoid(score_a)
+        y_b = torch.sigmoid(score_b)
+
+        return y_a, y_b
+
+    def loss(self, target, y):
+        y_a, y_b = target
+        return self.bce(y_a, y) + self.bce(y_b, y)
 
     def init(self):
         self.E.init()
