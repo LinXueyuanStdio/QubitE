@@ -9,9 +9,77 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult, QubitMatrixMult
+from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitScoringAll, QubitNorm, QubitMult
+from toolbox.nn.CoPER import ContextualParameterGenerator
 from toolbox.nn.ComplexEmbedding import ComplexAlign
 from toolbox.nn.Regularizer import N3
+
+
+class ComplexEmbeddingGenerator(nn.Module):
+
+    def __init__(self, generate_dim, embedding_dim, num_channels=2):
+        super().__init__()
+        self.num_channels = num_channels
+        self.generators = nn.ModuleList([
+            ContextualParameterGenerator(generate_dim, [embedding_dim])
+            for _ in range(num_channels)
+        ])
+
+    def forward(self, h):
+        # h: Bxd
+        embedding = (f(h) for f in self.generators)
+        return embedding
+
+
+class QubitEmbeddingGenerator(nn.Module):
+
+    def __init__(self, generate_dim, embedding_dim, num_channels=2):
+        super().__init__()
+        self.num_channels = num_channels
+        self.generators = nn.ModuleList([
+            ComplexEmbeddingGenerator(generate_dim, embedding_dim)
+            for _ in range(num_channels)
+        ])
+
+    def forward(self, h):
+        # h: Bxd
+        embedding = (f(h) for f in self.generators)
+        return embedding
+
+
+class GeneratedQubitEmbedding(nn.Module):
+
+    def __init__(self, num_embeddings, embedding_dim, num_channels=2):
+        super().__init__()
+        self.num_channels = num_channels
+        self.embedding = nn.Embedding(num_embeddings, embedding_dim // 2)  # alpha = a + bi, beta = c + di
+        self.generator = QubitEmbeddingGenerator(embedding_dim // 2, embedding_dim)
+
+    def forward(self, h_idx):
+        # h: Bx1
+        h = self.embedding(h_idx)
+        embedding = self.generator(h)
+        (ha, hai), (hb, hbi) = embedding
+        norm = ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2
+        ha /= norm
+        hai /= norm
+        hb /= norm
+        hbi /= norm
+        return (ha, hai), (hb, hbi)
+
+    def init(self):
+        pass
+
+    def get_embeddings(self):
+        h = self.embedding.weight
+        embedding = self.generator(h)
+        (ha, hai), (hb, hbi) = embedding
+        norm = ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2
+        ha /= norm
+        hai /= norm
+        hb /= norm
+        hbi /= norm
+        return [(ha, hai), (hb, hbi)]
 
 
 class QubitE(nn.Module):
@@ -20,13 +88,13 @@ class QubitE(nn.Module):
                  num_entities, num_relations,
                  embedding_dim,
                  norm_flag=False, input_dropout=0.2, hidden_dropout=0.3, regularization_weight=0.1):
-        super(QubitE, self).__init__()
+        super().__init__()
         self.embedding_dim = embedding_dim
         self.num_entities = num_entities
         self.num_relations = num_relations
         self.bce = nn.BCELoss()
-        self.E = QubitEmbedding(self.num_entities, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
-        self.R = QubitEmbedding(self.num_relations, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
+        self.E = GeneratedQubitEmbedding(self.num_entities, self.embedding_dim)  # alpha = a + bi, beta = c + di
+        self.R = GeneratedQubitEmbedding(self.num_relations, self.embedding_dim)  # alpha = a + bi, beta = c + di
         self.E_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.R_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.hidden_dp = QubitDropout([[hidden_dropout, hidden_dropout]] * 2)
