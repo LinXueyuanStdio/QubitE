@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from model import QubitE
+from QubitE import QubitE
 from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletDatasetCachePath
 from toolbox.data.DatasetSchema import FreebaseFB15k_237
 from toolbox.data.LinkPredictDataset import LinkPredictDataset
