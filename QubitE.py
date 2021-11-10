@@ -60,25 +60,25 @@ class GeneratedQubitEmbedding(nn.Module):
         h = self.embedding(h_idx)
         embedding = self.generator(h)
         (ha, hai), (hb, hbi) = embedding
-        norm = ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2
-        ha /= norm
-        hai /= norm
-        hb /= norm
-        hbi /= norm
+        # norm = ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2
+        # ha /= norm
+        # hai /= norm
+        # hb /= norm
+        # hbi /= norm
         return (ha, hai), (hb, hbi)
 
     def init(self):
-        pass
+        nn.init.xavier_normal_(self.embedding.weight.data)
 
     def get_embeddings(self):
         h = self.embedding.weight
         embedding = self.generator(h)
         (ha, hai), (hb, hbi) = embedding
-        norm = ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2
-        ha /= norm
-        hai /= norm
-        hb /= norm
-        hbi /= norm
+        # norm = ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2
+        # ha /= norm
+        # hai /= norm
+        # hb /= norm
+        # hbi /= norm
         return [(ha, hai), (hb, hbi)]
 
 
@@ -203,7 +203,8 @@ if __name__ == "__main__":
     r = torch.LongTensor(random.choices([[i] for i in range(R)], k=B))
     t = torch.LongTensor(random.choices([[i] for i in range(E)], k=B))
     target = torch.rand((B, E))
-    model = QubitE(E, R, 5)
+    model = QubitE(E, R, 6)
+    model.init()
     pred = model(h, r)
     print(pred)
     print(model.loss(pred, target))
