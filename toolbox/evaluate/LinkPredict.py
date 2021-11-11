@@ -30,7 +30,7 @@ def batch_link_predict(test_batch_size: int, max_iter: int, predict, log=empty_l
 
         sort_idxs = sort_idxs.cpu().numpy()
         for j in range(truth.shape[0]):
-            rank = np.where(sort_idxs[j] == truth[j].item())[0][0]
+            rank = np.where(sort_idxs[j] == truth[j, 0].item())[0][0]
             ranks.append(rank + 1)
 
             for hits_level in range(10):
