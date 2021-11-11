@@ -82,7 +82,7 @@ class GeneratedQubitEmbedding(nn.Module):
         h = self.embedding(h_idx)
         embedding = self.generator(h)
         (ha, hai), (hb, hbi) = embedding
-        norm = torch.sqrt(ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2)
+        norm = torch.sqrt(ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2).detach()
         ha /= norm
         hai /= norm
         hb /= norm
@@ -96,7 +96,7 @@ class GeneratedQubitEmbedding(nn.Module):
         h = self.embedding.weight
         embedding = self.generator(h)
         (ha, hai), (hb, hbi) = embedding
-        norm = torch.sqrt(ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2)
+        norm = torch.sqrt(ha ** 2 + hai ** 2 + hb ** 2 + hbi ** 2).detach()
         ha /= norm
         hai /= norm
         hb /= norm
