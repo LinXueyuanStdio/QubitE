@@ -142,7 +142,7 @@ class MyExperiment(Experiment):
 
         progbar = Progbar(max_step=len(test_data) // (test_batch_size * 10))
 
-        def log(i, hits, ranks):
+        def log(i, hits, hits_left, hits_right, ranks, ranks_left, ranks_right):
             if i % (test_batch_size * 10) == 0:
                 progbar.update(i // (test_batch_size * 10), [("Hits @10", np.mean(hits[9]))])
 
