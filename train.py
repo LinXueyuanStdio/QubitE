@@ -12,7 +12,7 @@ from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
 from toolbox.evaluate.Evaluate import get_score
-from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict
+from toolbox.evaluate.LinkPredict import batch_link_predict, as_result_dict
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.optim.lr_scheduler import get_scheduler
@@ -131,42 +131,29 @@ class MyExperiment(Experiment):
             h = h.to(device)
             r = r.to(device)
             mask_for_hr = mask_for_hr.to(device)
-            t = t.to(device)
-            reverse_r = reverse_r.to(device)
-            mask_for_tReverser = mask_for_tReverser.to(device)
             pred1 = model(h, r)
-            pred2 = model(t, reverse_r)
             pred1 = pred1[0] + pred1[1]
-            pred2 = pred2[0] + pred2[1]
-            return t, h, pred1, pred2, mask_for_hr, mask_for_tReverser
+            return pred1, mask_for_hr
 
         progbar = Progbar(max_step=len(test_data) // (test_batch_size * 10))
 
-        def log(i, hits, hits_left, hits_right, ranks, ranks_left, ranks_right):
+        def log(i, hits, ranks):
             if i % (test_batch_size * 10) == 0:
                 progbar.update(i // (test_batch_size * 10), [("Hits @10", np.mean(hits[9]))])
 
-        hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict2(test_batch_size, len(test_data), predict, log)
-        result = as_result_dict((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+        hits, ranks = batch_link_predict(test_batch_size, len(test_data), predict, log)
+        result = as_result_dict((hits, ranks))
         for i in (0, 2, 9):
-            self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
-        self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
-        self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+            self.log('Hits @{0:2d}: {1:2.2%}'.format(i + 1, np.mean(hits[i])))
+        self.log('Mean rank: {0:.3f}'.format(np.mean(ranks)))
+        self.log('Mean reciprocal rank: {0:.3f}'.format(np.mean(1. / np.array(ranks))))
         return result
 
     def visual_result(self, step_num: int, result, scope: str):
         average = result["average"]
-        left2right = result["left2right"]
-        right2left = result["right2left"]
         sorted(average)
-        sorted(left2right)
-        sorted(right2left)
         for i in average:
             self.vis.add_scalar(scope + i, average[i], step_num)
-        for i in left2right:
-            self.vis.add_scalar(scope + i, left2right[i], step_num)
-        for i in right2left:
-            self.vis.add_scalar(scope + i, right2left[i], step_num)
 
     def dump_model(self, model):
         self.debug(model)

@@ -75,7 +75,7 @@ class QubitBatchNorm1d(nn.Module):
 class QubitNorm(nn.Module):
     def forward(self, e: Qubit) -> Qubit:
         (alpha_a, alpha_b), (beta_a, beta_b) = e
-        length = torch.sqrt(alpha_a ** 2 + alpha_b ** 2 + beta_a ** 2 + beta_b ** 2)
+        length = torch.sqrt(alpha_a ** 2 + alpha_b ** 2 + beta_a ** 2 + beta_b ** 2).detach()
         return (alpha_a / length, alpha_b / length), (beta_a / length, beta_b / length)
 
 

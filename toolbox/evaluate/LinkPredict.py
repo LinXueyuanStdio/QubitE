@@ -25,6 +25,7 @@ def batch_link_predict(test_batch_size: int, max_iter: int, predict, log=empty_l
         hits.append([])
     for i in range(0, max_iter, test_batch_size):
         predictions, truth = predict(i)
+        predictions = predictions - predictions * truth
         sort_values, sort_idxs = torch.sort(predictions, dim=1, descending=True)
 
         sort_idxs = sort_idxs.cpu().numpy()
@@ -100,6 +101,30 @@ def batch_link_predict2(test_batch_size: int, max_iter: int, predict, log=empty_
 
 
 def as_result_dict(metrics):
+    """
+    result = {
+        "average": {
+            "Hits@1": float,
+            "Hits@3": float,
+            "Hits@10": float,
+            "MeanRank": float,
+            "MeanReciprocalRank": float,
+        },
+    }
+    """
+    hits, ranks = metrics
+    top_k = (0, 2, 9)
+    result = {
+        "average": {}
+    }
+    for i in top_k:
+        result["average"]["Hits@{}".format(i+1)] = np.mean(hits[i])
+    result["average"]["MeanRank"] = np.mean(ranks)
+    result["average"]["MeanReciprocalRank"] = np.mean(1. / np.array(ranks))
+    return result
+
+
+def as_result_dict2(metrics):
     """
     result = {
         "average": {

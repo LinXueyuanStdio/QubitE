@@ -11,7 +11,7 @@ from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
 from toolbox.evaluate.Evaluate import get_score
-from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict
+from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict2
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.nn.RotatE import RotateMult2
@@ -147,7 +147,7 @@ class MyExperiment(Experiment):
                 progbar.update(i // (test_batch_size * 10), [("Hits @10", np.mean(hits[9]))])
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict2(test_batch_size, len(test_data), predict, log)
-        result = as_result_dict((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+        result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
         for i in (0, 2, 9):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
