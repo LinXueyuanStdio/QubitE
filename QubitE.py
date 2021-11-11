@@ -29,7 +29,7 @@ class ContextualParameterGenerator(nn.Module):
             nn.Dropout(0.1),
             nn.ReLU(),
             nn.Linear(self.hidden_dim, self.feature_out_dim),
-            nn.ReLU(),
+            # nn.ReLU(),
         )
 
     def forward(self, x):
