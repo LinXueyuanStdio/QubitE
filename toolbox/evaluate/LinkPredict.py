@@ -1,3 +1,5 @@
+from typing import Union, Dict
+
 import numpy as np
 import torch
 
@@ -118,7 +120,7 @@ def as_result_dict(metrics):
         "average": {}
     }
     for i in top_k:
-        result["average"]["Hits@{}".format(i+1)] = np.mean(hits[i])
+        result["average"]["Hits@{}".format(i + 1)] = np.mean(hits[i])
     result["average"]["MeanRank"] = np.mean(ranks)
     result["average"]["MeanReciprocalRank"] = np.mean(1. / np.array(ranks))
     return result
@@ -154,9 +156,9 @@ def as_result_dict2(metrics):
     top_k = (0, 2, 9)
     result = {"average": {}, "left2right": {}, "right2left": {}}
     for i in top_k:
-        result["average"]["Hits@{}".format(i+1)] = np.mean(hits[i])
-        result["left2right"]["Hits@{}".format(i+1)] = np.mean(hits_left[i])
-        result["right2left"]["Hits@{}".format(i+1)] = np.mean(hits_right[i])
+        result["average"]["Hits@{}".format(i + 1)] = np.mean(hits[i])
+        result["left2right"]["Hits@{}".format(i + 1)] = np.mean(hits_left[i])
+        result["right2left"]["Hits@{}".format(i + 1)] = np.mean(hits_right[i])
     result["average"]["MeanRank"] = np.mean(ranks)
     result["average"]["MeanReciprocalRank"] = np.mean(1. / np.array(ranks))
     result["left2right"]["MeanRank"] = np.mean(ranks_left)
@@ -164,6 +166,11 @@ def as_result_dict2(metrics):
     result["right2left"]["MeanRank"] = np.mean(ranks_right)
     result["right2left"]["MeanReciprocalRank"] = np.mean(1. / np.array(ranks_right))
     return result
+
+
+def get_score(result: Dict[str, Union[dict, float]]):
+    score = result["average"]["MeanReciprocalRank"]
+    return score
 
 
 def pretty_print(result, printer=print):
@@ -193,5 +200,3 @@ def pretty_print(result, printer=print):
         else:
             printer('%s: %.2f' % (i, right2left[i]))
     printer('---------------------------')
-
-

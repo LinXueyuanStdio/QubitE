@@ -11,8 +11,7 @@ from toolbox.data.DatasetSchema import FreebaseFB15k_237
 from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
-from toolbox.evaluate.Evaluate import get_score
-from toolbox.evaluate.LinkPredict import batch_link_predict, as_result_dict
+from toolbox.evaluate.LinkPredict import batch_link_predict, as_result_dict, get_score
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.optim.lr_scheduler import get_scheduler
