@@ -129,10 +129,11 @@ class MyExperiment(Experiment):
             h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
             h = h.to(device)
             r = r.to(device)
+            t = t.to(device)
             mask_for_hr = mask_for_hr.to(device)
             pred1 = model(h, r)
             pred1 = pred1[0] + pred1[1]
-            return pred1, mask_for_hr
+            return t, pred1, mask_for_hr
 
         progbar = Progbar(max_step=len(test_data) // (test_batch_size * 10))
 

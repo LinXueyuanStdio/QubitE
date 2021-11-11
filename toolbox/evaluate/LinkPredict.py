@@ -25,14 +25,14 @@ def batch_link_predict(test_batch_size: int, max_iter: int, predict, log=empty_l
     ranks = []
     for i in range(10):
         hits.append([])
-    for i in range(0, max_iter, test_batch_size):
-        predictions, truth = predict(i)
+    for idx in range(0, max_iter, test_batch_size):
+        t, predictions, truth = predict(idx)
         predictions = predictions - predictions * truth
         sort_values, sort_idxs = torch.sort(predictions, dim=1, descending=True)
 
         sort_idxs = sort_idxs.cpu().numpy()
-        for j in range(truth.shape[0]):
-            rank = np.where(sort_idxs[j] == truth[j, 0].item())[0][0]
+        for i in range(t.shape[0]):
+            rank = np.where(sort_idxs[i] == t[i, 0].item())[0][0]
             ranks.append(rank + 1)
 
             for hits_level in range(10):
@@ -40,7 +40,7 @@ def batch_link_predict(test_batch_size: int, max_iter: int, predict, log=empty_l
                     hits[hits_level].append(1.0)
                 else:
                     hits[hits_level].append(0.0)
-        log(i, hits, ranks)
+        log(idx, hits, ranks)
     return hits, ranks
 
 
