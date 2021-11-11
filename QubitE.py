@@ -4,15 +4,37 @@
 @date: 2021/10/14
 @description: null
 """
+from functools import reduce
+from operator import mul
+from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitScoringAll, QubitNorm, QubitMult
-from toolbox.nn.CoPER import ContextualParameterGenerator
 from toolbox.nn.ComplexEmbedding import ComplexAlign
 from toolbox.nn.Regularizer import N3
+
+
+class ContextualParameterGenerator(nn.Module):
+    def __init__(self, feature_in_dim: int, shape: List[int]):
+        super(ContextualParameterGenerator, self).__init__()
+        self.feature_in_dim = feature_in_dim
+        self.shape = shape
+        self.feature_out_dim = reduce(mul, shape, 1)
+        self.hidden_dim = 200
+        self.generate = nn.Sequential(
+            nn.Linear(self.feature_in_dim, self.hidden_dim),
+            nn.Dropout(0.1),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.feature_out_dim),
+            nn.ReLU(),
+        )
+
+    def forward(self, x):
+        x = self.generate(x)
+        return x.view(-1, *self.shape)
 
 
 class ComplexEmbeddingGenerator(nn.Module):
