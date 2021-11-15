@@ -38,7 +38,8 @@ class MyExperiment(Experiment):
         max_relation_id = data.relation_count
 
         # 1. build train dataset
-        train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
+        # train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
+        train_triples = data.train_triples_ids
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
