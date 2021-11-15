@@ -226,7 +226,7 @@ def main(args):
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     else:
         logging.info('Randomly Initializing %s Model...' % args.model)
-        init_step = 1
+        init_step = 0
 
     step = init_step
     if args.do_train:
