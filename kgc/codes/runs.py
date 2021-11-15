@@ -43,6 +43,7 @@ def parse_args(args=None):
     parser.add_argument('--max_steps', default=100000, type=int)
 
     parser.add_argument('--save_checkpoint_steps', default=5000, type=int)
+    parser.add_argument('--init_step', default=1, type=int)
     parser.add_argument('--valid_steps', default=10000, type=int)
     parser.add_argument('--log_steps', default=100, type=int, help='train log every xx steps')
     parser.add_argument('--test_log_steps', default=1000, type=int, help='valid/test log every xx steps')
@@ -226,7 +227,7 @@ def main(args):
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     else:
         logging.info('Randomly Initializing %s Model...' % args.model)
-        init_step = 0
+        init_step = args.init_step
 
     step = init_step
     if args.do_train:
