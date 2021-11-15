@@ -296,6 +296,83 @@ class Rotate3D(KGEModel):
             requires_grad=False
         )
 
+        self.entity_embedding = nn.Parameter(torch.zeros(num_entity, hidden_dim * 3))
+        nn.init.uniform_(
+            tensor=self.entity_embedding,
+            a=-self.embedding_range.item(),
+            b=self.embedding_range.item()
+        )
+
+        self.relation_embedding = nn.Parameter(torch.zeros(num_relation, hidden_dim * 4))
+        nn.init.uniform_(
+            tensor=self.relation_embedding,
+            a=-self.embedding_range.item(),
+            b=self.embedding_range.item()
+        )
+
+        # Initialize bias to 1
+        nn.init.ones_(
+            tensor=self.relation_embedding[:, 3 * hidden_dim:4 * hidden_dim]
+        )
+
+        self.pi = 3.14159262358979323846
+
+    def func(self, head, rel, tail, batch_type):
+        head_i, head_j, head_k = torch.chunk(head, 3, dim=2)
+        beta_1, beta_2, theta, bias = torch.chunk(rel, 4, dim=2)
+        tail_i, tail_j, tail_k = torch.chunk(tail, 3, dim=2)
+
+        bias = torch.abs(bias)
+
+        # Make phases of relations uniformly distributed in [-pi, pi]
+        beta_1 = beta_1 / (self.embedding_range.item() / self.pi)
+        beta_2 = beta_2 / (self.embedding_range.item() / self.pi)
+        theta = theta / (self.embedding_range.item() / self.pi)
+        cos_theta = torch.cos(theta)
+        sin_theta = torch.sin(theta)
+
+        # Obtain representation of the rotation axis
+        rel_i = torch.cos(beta_1)
+        rel_j = torch.sin(beta_1) * torch.cos(beta_2)
+        rel_k = torch.sin(beta_1) * torch.sin(beta_2)
+
+        C = rel_i * head_i + rel_j * head_j + rel_k * head_k
+        C = C * (1 - cos_theta)
+
+        # Rotate the head entity
+        new_head_i = head_i * cos_theta + C * rel_i + sin_theta * (rel_j * head_k - head_j * rel_k)
+        new_head_j = head_j * cos_theta + C * rel_j - sin_theta * (rel_i * head_k - head_i * rel_k)
+        new_head_k = head_k * cos_theta + C * rel_k + sin_theta * (rel_i * head_j - head_i * rel_j)
+
+        score_i = new_head_i * bias - tail_i
+        score_j = new_head_j * bias - tail_j
+        score_k = new_head_k * bias - tail_k
+
+        score = torch.stack([score_i, score_j, score_k], dim=0)
+        score = score.norm(dim=0, p=self.p)
+        score = self.gamma.item() - score.sum(dim=2)
+        return score
+
+
+class QubitE(KGEModel):
+    def __init__(self, num_entity, num_relation, hidden_dim, gamma, p_norm):
+        super().__init__()
+        self.num_entity = num_entity
+        self.num_relation = num_relation
+        self.hidden_dim = hidden_dim
+        self.epsilon = 2.0
+        self.p = p_norm
+
+        self.gamma = nn.Parameter(
+            torch.Tensor([gamma]),
+            requires_grad=False
+        )
+
+        self.embedding_range = nn.Parameter(
+            torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]),
+            requires_grad=False
+        )
+
         self.entity_embedding = nn.Parameter(torch.zeros(num_entity, hidden_dim * 4))
         nn.init.uniform_(
             tensor=self.entity_embedding,
