@@ -26,7 +26,9 @@ class QubitEmbedding(nn.Module):
         self.num_entities = num_entities
         self.embedding_dim = embedding_dim
         self.num_channels = num_channels
-        self.embeddings = nn.ModuleList([ComplexEmbedding(num_entities, embedding_dim, norm_num_channels) for _ in range(num_channels)])
+        self.embeddings = nn.ModuleList([
+            ComplexEmbedding(num_entities, embedding_dim, norm_num_channels) for _ in range(num_channels)
+        ])
 
     def forward(self, idx):
         embedings = []
