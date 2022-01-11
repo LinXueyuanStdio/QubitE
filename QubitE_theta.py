@@ -139,6 +139,7 @@ class QubitE(nn.Module):
         self.b_y = nn.Parameter(torch.zeros(num_entities))
         # self.proj_t = QubitProjection(self.embedding_dim, self.embedding_dim)
         self.norm = QubitNorm()
+        self.psi = nn.Parameter(torch.zeros(embedding_dim))
 
         self.mul = QubitMult(norm_flag)
         # self.mul = QubitMatrixMult(norm_flag)
@@ -160,7 +161,9 @@ class QubitE(nn.Module):
         Given a batch of head entities and relations => shape (size of batch,| Entities|)
         """
         h = self.E(h_idx)
-        ra, rb, phase = self.R(r_idx)
+        ra, rb, _ = self.R(r_idx)
+        psi = self.psi.unsqueeze(dim=0)
+        phase = (torch.cos(psi), torch.sin(psi))
         # h = self.norm(h)
         h = self.E_bn(h)
         # r = self.norm(r)
