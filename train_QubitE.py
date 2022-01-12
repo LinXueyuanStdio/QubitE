@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from QubitE_theta import QubitE
 from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletDatasetCachePath
-from toolbox.data.DatasetSchema import FreebaseFB15k_237
+from toolbox.data.DatasetSchema import FreebaseFB15k_237, FreebaseFB15k, WordNet18_RR, WordNet18
 from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
@@ -212,22 +212,29 @@ def main(dataset, name,
          ):
     set_seeds()
     output = OutputSchema(dataset + "-" + name)
+    
+    datasets = []
+    datasets.append(FreebaseFB15k_237(Path.home() / "data"))
+    datasets.append(FreebaseFB15k(Path.home() / "data"))
+    datasets.append(WordNet18_RR(Path.home() / "data"))
+    datasets.append(WordNet18(Path.home() / "data"))
 
-    dataset = FreebaseFB15k_237(Path.home() / "data")
-    cache = RelationalTripletDatasetCachePath(dataset.cache_path)
-    data = RelationalTripletData(dataset=dataset, cache_path=cache)
-    data.preprocess_data_if_needed()
-    data.load_cache(["meta"])
+    for i in datasets:
+        dataset = i
+        cache = RelationalTripletDatasetCachePath(dataset.cache_path)
+        data = RelationalTripletData(dataset=dataset, cache_path=cache)
+        data.preprocess_data_if_needed()
+        data.load_cache(["meta"])
 
-    MyExperiment(
-        output, data,
-        start_step, max_steps, every_test_step, every_valid_step,
-        batch_size, test_batch_size, sampling_window_size, label_smoothing,
-        train_device, test_device,
-        resume, resume_by_score,
-        lr, amsgrad, lr_decay, weight_decay,
-        edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
-    )
+        MyExperiment(
+            output, data,
+            start_step, max_steps, every_test_step, every_valid_step,
+            batch_size, test_batch_size, sampling_window_size, label_smoothing,
+            train_device, test_device,
+            resume, resume_by_score,
+            lr, amsgrad, lr_decay, weight_decay,
+            edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
+        )
 
 
 if __name__ == '__main__':
