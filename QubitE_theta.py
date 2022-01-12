@@ -65,8 +65,10 @@ class QubitE(nn.Module):
         self.hidden_dp = QubitDropout([[hidden_dropout, hidden_dropout]] * 2)
         self.E_bn = QubitBatchNorm1d(self.embedding_dim, 2)
         self.R_bn = QubitBatchNorm1d(self.embedding_dim, 4)
+        self.b_a = nn.Parameter(torch.zeros(num_entities))
         self.b_x = nn.Parameter(torch.zeros(num_entities))
         self.b_y = nn.Parameter(torch.zeros(num_entities))
+        self.b_z = nn.Parameter(torch.zeros(num_entities))
         self.norm = QubitNorm()
 
         self.mul = QubitMult(norm_flag)
