@@ -212,12 +212,12 @@ def main(dataset, name,
          ):
     set_seeds()
     output = OutputSchema(dataset + "-" + name)
-    
+
     datasets = []
-    datasets.append(FreebaseFB15k_237(Path.home() / "data"))
-    datasets.append(FreebaseFB15k(Path.home() / "data"))
     datasets.append(WordNet18_RR(Path.home() / "data"))
+    datasets.append(FreebaseFB15k(Path.home() / "data"))
     datasets.append(WordNet18(Path.home() / "data"))
+    datasets.append(FreebaseFB15k_237(Path.home() / "data"))
 
     for i in datasets:
         dataset = i
