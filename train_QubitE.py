@@ -140,11 +140,11 @@ class MyExperiment(Experiment):
             pred2 = pred2[0] + pred2[1]
             return t, h, pred1, pred2, mask_for_hr, mask_for_tReverser
 
-        progbar = Progbar(max_step=len(test_data) // (test_batch_size * 10))
+        progbar = Progbar(max_step=len(test_data) // (test_batch_size * 5))
 
         def log(i, hits, hits_left, hits_right, ranks, ranks_left, ranks_right):
-            if i % (test_batch_size * 10) == 0:
-                progbar.update(i // (test_batch_size * 10), [("Hits @10", np.mean(hits[9]))])
+            if i % (test_batch_size * 5) == 0:
+                progbar.update(i // (test_batch_size * 5), [("Hits @10", np.mean(hits[9]))])
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict2(test_batch_size, len(test_data), predict, log)
         result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
