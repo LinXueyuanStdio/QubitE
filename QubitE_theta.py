@@ -103,21 +103,21 @@ class QubitE(nn.Module):
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
         score_a_a, score_a_b = score_a
-        y_a = score_a_a + score_a_b
-        y_a = y_a + self.b_x.expand_as(y_a)
+        # y_a = score_a_a + score_a_b
+        # y_a = y_a + self.b_x.expand_as(y_a)
 
         score_b_a, score_b_b = score_b
-        y_b = score_b_a + score_b_b
-        y_b = y_b + self.b_y.expand_as(y_b)
+        # y_b = score_b_a + score_b_b
+        # y_b = y_b + self.b_y.expand_as(y_b)
+        #
+        # y_a = torch.sigmoid(y_a)
+        # y_b = torch.sigmoid(y_b)
+        y = torch.sigmoid(score_a_a + score_a_b + score_b_a + score_b_b)
 
-        y_a = torch.sigmoid(y_a)
-        y_b = torch.sigmoid(y_b)
-
-        return y_a, y_b
+        return y
 
     def loss(self, target, y):
-        y_a, y_b = target
-        return self.bce(y_a, y) + self.bce(y_b, y)
+        return self.bce(target, y)
 
     def regular_loss(self, h_idx, r_idx, t_idx):
         h = self.E(h_idx)
