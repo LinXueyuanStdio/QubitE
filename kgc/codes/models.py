@@ -480,58 +480,72 @@ class QubitE(KGEModel):
         self.pi = 3.14159262358979323846
 
     def func(self, head, rel, tail, batch_type):
-        hbeta_1, hbeta_2, htheta = torch.chunk(head, 3, dim=2)
-        beta_1, beta_2, theta, bias = torch.chunk(rel, 4, dim=2)
-        tbeta_1, tbeta_2, ttheta = torch.chunk(tail, 3, dim=2)
+        h_theta, h_phi, h_varphi = torch.chunk(head, 3, dim=2)
+        r_theta, r_phi, r_varphi, bias = torch.chunk(rel, 4, dim=2)
+        t_theta, t_phi, t_varphi = torch.chunk(tail, 3, dim=2)
 
         bias = torch.abs(bias)
 
         # Make phases of relations uniformly distributed in [-pi, pi]
-        hbeta_1 = hbeta_1 / (self.embedding_range.item() / self.pi)
-        hbeta_2 = hbeta_2 / (self.embedding_range.item() / self.pi)
-        htheta = htheta / (self.embedding_range.item() / self.pi)
-        cos_htheta = torch.cos(htheta)
-        sin_htheta = torch.sin(htheta)
+        h_theta = h_theta / (self.embedding_range.item() / self.pi)
+        h_phi = h_phi / (self.embedding_range.item() / self.pi)
+        h_varphi = h_varphi / (self.embedding_range.item() / self.pi)
+        cos_h_varphi = torch.cos(h_varphi)
+        sin_h_varphi = torch.sin(h_varphi)
 
         # Obtain representation of the rotation axis
-        head_i = torch.cos(hbeta_1)
-        head_j = torch.sin(hbeta_1) * torch.cos(hbeta_2)
-        head_k = torch.sin(hbeta_1) * torch.sin(hbeta_2)
+        head_i = torch.cos(h_theta)
+        head_j = torch.sin(h_theta) * torch.cos(h_phi)
+        head_k = torch.sin(h_theta) * torch.sin(h_phi)
+        ha = cos_h_varphi
+        hai = sin_h_varphi * head_i
+        hb = sin_h_varphi * head_j
+        hbi = sin_h_varphi * head_k
 
         # Make phases of relations uniformly distributed in [-pi, pi]
-        beta_1 = beta_1 / (self.embedding_range.item() / self.pi)
-        beta_2 = beta_2 / (self.embedding_range.item() / self.pi)
-        theta = theta / (self.embedding_range.item() / self.pi)
-        cos_theta = torch.cos(theta)
-        sin_theta = torch.sin(theta)
+        r_theta = r_theta / (self.embedding_range.item() / self.pi)
+        r_phi = r_phi / (self.embedding_range.item() / self.pi)
+        r_varphi = r_varphi / (self.embedding_range.item() / self.pi)
+        cos_r_varphi = torch.cos(r_varphi)
+        sin_r_varphi = torch.sin(r_varphi)
 
         # Obtain representation of the rotation axis
-        rel_i = torch.cos(beta_1)
-        rel_j = torch.sin(beta_1) * torch.cos(beta_2)
-        rel_k = torch.sin(beta_1) * torch.sin(beta_2)
+        rel_i = torch.cos(r_theta)
+        rel_j = torch.sin(r_theta) * torch.cos(r_phi)
+        rel_k = torch.sin(r_theta) * torch.sin(r_phi)
+
+        ra = cos_r_varphi
+        rai = sin_r_varphi * rel_i
+        rb = sin_r_varphi * rel_j
+        rbi = sin_r_varphi * rel_k
 
         # Make phases of relations uniformly distributed in [-pi, pi]
-        tbeta_1 = tbeta_1 / (self.embedding_range.item() / self.pi)
-        tbeta_2 = tbeta_2 / (self.embedding_range.item() / self.pi)
-        ttheta = ttheta / (self.embedding_range.item() / self.pi)
-        cos_ttheta = torch.cos(ttheta)
-        sin_ttheta = torch.sin(ttheta)
+        t_theta = t_theta / (self.embedding_range.item() / self.pi)
+        t_phi = t_phi / (self.embedding_range.item() / self.pi)
+        t_varphi = t_varphi / (self.embedding_range.item() / self.pi)
+        cos_t_varphi = torch.cos(t_varphi)
+        sin_t_varphi = torch.sin(t_varphi)
 
         # Obtain representation of the rotation axis
-        tail_i = torch.cos(tbeta_1)
-        tail_j = torch.sin(tbeta_1) * torch.cos(tbeta_2)
-        tail_k = torch.sin(tbeta_1) * torch.sin(tbeta_2)
+        tail_i = torch.cos(t_theta)
+        tail_j = torch.sin(t_theta) * torch.cos(t_phi)
+        tail_k = torch.sin(t_theta) * torch.sin(t_phi)
+
+        ta = cos_t_varphi
+        tai = sin_t_varphi * tail_i
+        tb = sin_t_varphi * tail_j
+        tbi = sin_t_varphi * tail_k
 
         # Rotate the head entity
         uv = head_i * rel_i + head_j * rel_j + head_k * rel_k
 
-        a = cos_theta * cos_htheta - sin_theta * sin_htheta * uv
+        a = cos_r_varphi * cos_h_varphi - sin_r_varphi * sin_h_varphi * uv
 
-        new_head_i = head_i * cos_theta * sin_htheta + rel_i * cos_htheta * sin_theta + sin_theta * sin_htheta * (rel_j * head_k - head_j * rel_k)
-        new_head_j = head_j * cos_theta * sin_htheta + rel_j * cos_htheta * sin_theta - sin_theta * sin_htheta * (rel_i * head_k - head_i * rel_k)
-        new_head_k = head_k * cos_theta * sin_htheta + rel_k * cos_htheta * sin_theta + sin_theta * sin_htheta * (rel_i * head_j - head_i * rel_j)
+        new_head_i = head_i * cos_r_varphi * sin_h_varphi + rel_i * cos_h_varphi * sin_r_varphi + sin_r_varphi * sin_h_varphi * (rel_j * head_k - head_j * rel_k)
+        new_head_j = head_j * cos_r_varphi * sin_h_varphi + rel_j * cos_h_varphi * sin_r_varphi - sin_r_varphi * sin_h_varphi * (rel_i * head_k - head_i * rel_k)
+        new_head_k = head_k * cos_r_varphi * sin_h_varphi + rel_k * cos_h_varphi * sin_r_varphi + sin_r_varphi * sin_h_varphi * (rel_i * head_j - head_i * rel_j)
 
-        score_a = a * bias - cos_ttheta
+        score_a = a * bias - cos_t_varphi
 
         score_i = new_head_i * bias - tail_i
         score_j = new_head_j * bias - tail_j
