@@ -67,12 +67,9 @@ class QubitE(nn.Module):
         self.R_bn = QubitBatchNorm1d(self.embedding_dim, 4)
         self.b_x = nn.Parameter(torch.zeros(num_entities))
         self.b_y = nn.Parameter(torch.zeros(num_entities))
-        # self.proj_t = QubitProjection(self.embedding_dim, self.embedding_dim)
         self.norm = QubitNorm()
 
         self.mul = QubitMult(norm_flag)
-        # self.mul = QubitMatrixMult(norm_flag)
-        # self.mul = QubitUnitaryMult(norm_flag)
         self.scoring_all = QubitScoringAll()
         self.align = ComplexAlign()
         self.regularizer = N3(regularization_weight)
@@ -91,33 +88,29 @@ class QubitE(nn.Module):
         """
         h = self.E(h_idx)
         r = self.R(r_idx)
-        # h = self.norm(h)
         h = self.E_bn(h)
-        # r = self.norm(r)
-        # r = self.R_bn(r)
         t = self.mul(h, r)
-        # t = self.proj_t(t)
 
         E = self.E.get_embeddings()
         E = self.E_bn(E)
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
         score_a_a, score_a_b = score_a
-        # y_a = score_a_a + score_a_b
-        # y_a = y_a + self.b_x.expand_as(y_a)
+        y_a = score_a_a + score_a_b
+        y_a = y_a + self.b_x.expand_as(y_a)
 
         score_b_a, score_b_b = score_b
-        # y_b = score_b_a + score_b_b
-        # y_b = y_b + self.b_y.expand_as(y_b)
-        #
-        # y_a = torch.sigmoid(y_a)
-        # y_b = torch.sigmoid(y_b)
-        y = torch.sigmoid(score_a_a + score_a_b + score_b_a + score_b_b)
+        y_b = score_b_a + score_b_b
+        y_b = y_b + self.b_y.expand_as(y_b)
 
-        return y
+        y_a = torch.sigmoid(y_a)
+        y_b = torch.sigmoid(y_b)
+
+        return y_a, y_b
 
     def loss(self, target, y):
-        return self.bce(target, y)
+        y_a, y_b = target
+        return self.bce(y_a, y) + self.bce(y_b, y)
 
     def regular_loss(self, h_idx, r_idx, t_idx):
         h = self.E(h_idx)
