@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult, QubitMatrixMult
+from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult
 from toolbox.nn.ComplexEmbedding import ComplexAlign
 from toolbox.nn.Regularizer import N3
 
@@ -77,15 +77,15 @@ class QubitE(nn.Module):
         score_b_a, score_b_b = score_b
 
         y_a = torch.sigmoid(score_a_a + self.b_a.expand_as(score_a_a))
-        y_ai = torch.sigmoid(score_a_b+ self.b_x.expand_as(score_a_b))
-        y_b = torch.sigmoid(score_b_a+ self.b_x.expand_as(score_b_a))
-        y_bi = torch.sigmoid(score_b_b+ self.b_x.expand_as(score_b_b))
+        y_ai = torch.sigmoid(score_a_b + self.b_x.expand_as(score_a_b))
+        y_b = torch.sigmoid(score_b_a + self.b_x.expand_as(score_b_a))
+        y_bi = torch.sigmoid(score_b_b + self.b_x.expand_as(score_b_b))
 
         return y_a, y_ai, y_b, y_bi
 
     def loss(self, target, y):
-        y_a, y_b = target
-        return self.bce(y_a, y) + self.bce(y_b, y)
+        y_a, y_ai, y_b, y_bi = target
+        return self.bce(y_a, y) + self.bce(y_ai, y) + self.bce(y_b, y) + self.bce(y_bi, y)
 
     def regular_loss(self, h_idx, r_idx, t_idx):
         h = self.E(h_idx)
