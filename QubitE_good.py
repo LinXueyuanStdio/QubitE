@@ -4,47 +4,14 @@
 @date: 2021/10/14
 @description: null
 """
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitScoringAll, QubitNorm, QubitMult
+from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult
 from toolbox.nn.ComplexEmbedding import ComplexAlign
 from toolbox.nn.Regularizer import N3
-
-
-class GeneratedQubitEmbedding(nn.Module):
-
-    def __init__(self, num_embeddings, embedding_dim):
-        super().__init__()
-        self.theta = nn.Embedding(num_embeddings, embedding_dim)
-        self.phi = nn.Embedding(num_embeddings, embedding_dim)
-        self.varphi = nn.Embedding(num_embeddings, embedding_dim)
-
-    def forward(self, h_idx):
-        # h: Bx1
-        theta = self.theta(h_idx)
-        phi = self.phi(h_idx)
-        varphi = self.varphi(h_idx)
-        ha = torch.cos(theta)
-        hai = torch.sin(theta) * torch.cos(phi)
-        hb = torch.sin(theta) * torch.sin(phi) * torch.cos(varphi)
-        hbi = torch.sin(theta) * torch.sin(phi) * torch.sin(varphi)
-        return (ha, hai), (hb, hbi)
-
-    def init(self):
-        nn.init.xavier_normal_(self.theta.weight.data)
-        nn.init.xavier_normal_(self.phi.weight.data)
-        nn.init.xavier_normal_(self.varphi.weight.data)
-
-    def get_embeddings(self):
-        theta = self.theta.weight
-        phi = self.phi.weight
-        varphi = self.varphi.weight
-        ha = torch.cos(theta)
-        hai = torch.sin(theta) * torch.cos(phi)
-        hb = torch.sin(theta) * torch.sin(phi) * torch.cos(varphi)
-        hbi = torch.sin(theta) * torch.sin(phi) * torch.sin(varphi)
-        return [(ha, hai), (hb, hbi)]
 
 
 class QubitE(nn.Module):
@@ -53,13 +20,13 @@ class QubitE(nn.Module):
                  num_entities, num_relations,
                  embedding_dim,
                  norm_flag=False, input_dropout=0.1, hidden_dropout=0.1, regularization_weight=0.1):
-        super().__init__()
+        super(QubitE, self).__init__()
         self.embedding_dim = embedding_dim
         self.num_entities = num_entities
         self.num_relations = num_relations
         self.bce = nn.BCELoss()
-        self.E = GeneratedQubitEmbedding(self.num_entities, self.embedding_dim)  # alpha = a + bi, beta = c + di
-        self.R = GeneratedQubitEmbedding(self.num_relations, self.embedding_dim)  # alpha = a + bi, beta = c + di
+        self.E = QubitEmbedding(self.num_entities, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
+        self.R = QubitEmbedding(self.num_relations, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
         self.E_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.R_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.hidden_dp = QubitDropout([[hidden_dropout, hidden_dropout]] * 2)
@@ -73,6 +40,8 @@ class QubitE(nn.Module):
         self.norm = QubitNorm()
 
         self.mul = QubitMult(norm_flag)
+        # self.mul = QubitMatrixMult(norm_flag)
+        # self.mul = QubitUnitaryMult(norm_flag)
         self.scoring_all = QubitScoringAll()
         self.align = ComplexAlign()
         self.regularizer = N3(regularization_weight)
@@ -91,10 +60,16 @@ class QubitE(nn.Module):
         """
         h = self.E(h_idx)
         r = self.R(r_idx)
+        h = self.norm(h)
         h = self.E_bn(h)
+        r = self.norm(r)
+        # r = self.R_bn(r)
         t = self.mul(h, r)
+        # t = self.proj_t(t)
 
         E = self.E.get_embeddings()
+        E = self.norm(E)
+        # E = self.proj_h(E)
         E = self.E_bn(E)
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
@@ -127,6 +102,23 @@ class QubitE(nn.Module):
         regular_loss = self.regularizer(factors)
         return regular_loss
 
+    def reverse_loss(self, h_idx, r_idx, max_relation_idx):
+        h = self.E(h_idx)
+        h_a, h_b = h
+        h = (h_a.detach(), h_b.detach())
+
+        r = self.R(r_idx)
+        reverse_rel_idx = (r_idx + max_relation_idx) % (2 * max_relation_idx)
+
+        t = self.mul(h, r)
+        reverse_r = self.R(reverse_rel_idx)
+        reverse_t = self.mul(t, reverse_r)
+        reverse_a, reverse_b = self.align(reverse_t, h)  # a + b i
+        reverse_score = reverse_a + reverse_b
+        reverse_score = torch.mean(F.relu(reverse_score))
+
+        return reverse_score
+
     def init(self):
         self.E.init()
         self.R.init()
@@ -142,8 +134,7 @@ if __name__ == "__main__":
     r = torch.LongTensor(random.choices([[i] for i in range(R)], k=B))
     t = torch.LongTensor(random.choices([[i] for i in range(E)], k=B))
     target = torch.rand((B, E))
-    model = QubitE(E, R, 6)
-    model.init()
+    model = QubitE(E, R, 5)
     pred = model(h, r)
     print(pred)
     print(model.loss(pred, target))
