@@ -34,7 +34,7 @@ class MyExperiment(Experiment):
         data.load_cache(["train_triples_ids", "test_triples_ids", "valid_triples_ids", "all_triples_ids"])
         data.load_cache(["hr_t_train"])
         data.print(self.log)
-        self.store.save_scripts(["train_QubitE.py", "QubitE_theta.py", "QubitEmbedding.py"])
+        self.store.save_scripts(["train_QubitE.py", "QubitE_good.py", "QubitEmbedding.py"])
         max_relation_id = data.relation_count
 
         # 1. build train dataset
