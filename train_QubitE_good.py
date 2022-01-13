@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from QubitE_good import QubitE
 from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletDatasetCachePath
-from toolbox.data.DatasetSchema import FreebaseFB15k_237, FreebaseFB15k, WordNet18_RR, WordNet18
+from toolbox.data.DatasetSchema import get_dataset
 from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
@@ -212,12 +212,11 @@ def main(dataset, name,
          ):
     set_seeds()
     output = OutputSchema(dataset + "-" + name)
-
-    datasets = []
-    datasets.append(WordNet18_RR(Path.home() / "data"))
-    # datasets.append(FreebaseFB15k(Path.home() / "data"))
-    # datasets.append(WordNet18(Path.home() / "data"))
-    # datasets.append(FreebaseFB15k_237(Path.home() / "data"))
+    data_home = Path.home() / "data"
+    if dataset == "all":
+        datasets = [get_dataset(i, data_home) for i in ["FB15k", "FB15k-237", "WN18", "WN18RR"]]
+    else:
+        datasets = [get_dataset(dataset, data_home)]
 
     for i in datasets:
         dataset = i
