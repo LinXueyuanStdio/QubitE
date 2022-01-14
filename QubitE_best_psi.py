@@ -9,10 +9,44 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult, BatchQubitScoringAll
-from toolbox.nn.ComplexEmbedding import ComplexAlign
+from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, BatchQubitScoringAll, Qubit
+from toolbox.nn.ComplexEmbedding import ComplexAlign, ComplexMult, ComplexAdd, ComplexSubstract, ComplexDiv, ComplexConjugate
 from toolbox.nn.Regularizer import N3
 
+
+class QubitMult(nn.Module):
+    """
+    U[r] = [[r_a, -^r_b],
+            [r_b, ^r_a ]]  ^ is conj
+    h = [h_a, h_b]
+
+    h_a, h_b in CP^d
+    r_a, r_b in CP^d
+
+    h * r = U[r] * h = [r_a * h_a + -^r_b * h_b, r_b * h_a + ^r_a * h_b]
+    """
+
+    def __init__(self, norm_flag=False):
+        super(QubitMult, self).__init__()
+        self.norm_flag = norm_flag
+        self.complex_mul = ComplexMult(False)
+        self.complex_add = ComplexAdd()
+        self.complex_sub = ComplexSubstract()
+        self.complex_div = ComplexDiv()
+        self.complex_conj = ComplexConjugate()
+        self.norm = QubitNorm()
+
+    def forward(self, h: Qubit, r: Qubit, psi) -> Qubit:
+        if self.norm_flag:
+            h_a, h_b = self.norm(h)
+            r_a, r_b = self.norm(r)
+        else:
+            h_a, h_b = h
+            r_a, r_b = r
+        z = (torch.cos(psi), torch.sin(psi))
+        a = self.complex_sub(self.complex_mul(h_a, r_a), self.complex_mul(z, self.complex_mul(h_b, self.complex_conj(r_b))))
+        b = self.complex_add(self.complex_mul(h_a, r_b), self.complex_mul(z, self.complex_mul(h_b, self.complex_conj(r_a))))
+        return a, b
 
 class QubitE(nn.Module):
 
@@ -27,6 +61,7 @@ class QubitE(nn.Module):
         self.bce = nn.BCELoss()
         self.E = QubitEmbedding(self.num_entities, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
         self.R = QubitEmbedding(self.num_relations, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
+        self.R_psi = nn.Embedding(self.num_relations, self.embedding_dim)
         self.E_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.R_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.hidden_dp = QubitDropout([[hidden_dropout, hidden_dropout]] * 2)
@@ -60,17 +95,17 @@ class QubitE(nn.Module):
         Given a batch of head entities and relations => shape (size of batch,| Entities|)
         """
         h = self.E(h_idx)
-        r = self.R(r_idx)
         h = self.norm(h)
         h = self.E_bn(h)
+
+        r = self.R(r_idx)
         r = self.norm(r)
-        # r = self.R_bn(r)
-        t = self.mul(h, r)
-        # t = self.proj_t(t)
+        r_psi = self.R_psi(r_idx)
+
+        t = self.mul(h, r, r_psi)
 
         E = self.E.get_embeddings()
         E = self.norm(E)
-        # E = self.proj_h(E)
         E = self.E_bn(E)
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
@@ -109,6 +144,7 @@ class QubitE(nn.Module):
         r3 = r3.unsqueeze(dim=1)
         r4 = r4.unsqueeze(dim=1)  # B, 1, d
         r = (r1, r2), (r3, r4)
+        r_psi = self.R_psi(r_idx)
 
         E = self.E.get_embeddings()
         E = self.norm(E)
@@ -119,7 +155,7 @@ class QubitE(nn.Module):
         E3 = E3.unsqueeze(dim=0)
         E4 = E4.unsqueeze(dim=0)  # 1, N, d
         E = (E1, E2), (E3, E4)
-        h = self.mul(E, r)  # B, N, d
+        h = self.mul(E, r, r_psi)  # B, N, d
 
         score_a, score_b = self.batch_scoring_all(self.E_dropout(t), self.E_dropout(h)) # B, N
         s1, s2 = score_a

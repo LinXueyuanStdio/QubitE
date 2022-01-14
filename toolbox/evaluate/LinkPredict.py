@@ -123,26 +123,26 @@ def batch_link_predict_type_constraint(
     for idx in range(0, max_iter, test_batch_size):
         t, h, pred1, pred2, truth1, truth2, r, reverse_r = predict(idx)
 
-        # filter existing other answers and leave current answer for testing
+        # 1. filter existing other answers and leave current answer for testing
         pred1 = pred1 - pred1 * truth1
         pred2 = pred2 - pred2 * truth2
-        # type constraint
+        # 2. type constraint
         for i in range(h.shape[0]):
-            t_idx = t[i, 0].item()
             r_idx = r[i, 0].item()
+            # 2.1. tail constraint
+            t_idx = t[i, 0].item()
             constraint_idx = list(set(tail_type_constraint[r_idx] + [t_idx]))
             mask_for_tail_type_constraint = torch.zeros(entity_count, device=pred1.device).long()
             mask_for_tail_type_constraint[constraint_idx] = 1
-            pred1[i, :] = pred1[i, :] * mask_for_tail_type_constraint
-
+            pred1[i, :] = pred1[i, :] * mask_for_tail_type_constraint  # filter tails
+            # 2.2. head constraint
             h_idx = h[i, 0].item()
-            # reverse_r_idx = reverse_r[i, 0].item()
             constraint_idx = list(set(head_type_constraint[r_idx] + [h_idx]))
             mask_for_head_type_constraint = torch.zeros(entity_count, device=pred2.device).long()
             mask_for_head_type_constraint[constraint_idx] = 1
-            pred2[i, :] = pred2[i, :] * mask_for_head_type_constraint
+            pred2[i, :] = pred2[i, :] * mask_for_head_type_constraint  # filter heads
 
-        # sort and rank
+        # 3. sort and rank
         max_values, argsort1 = torch.sort(pred1, 1, descending=True)
         max_values, argsort2 = torch.sort(pred2, 1, descending=True)
 
