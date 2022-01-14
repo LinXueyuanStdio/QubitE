@@ -114,6 +114,7 @@ class QubitMult(nn.Module):
         b = self.complex_add(self.complex_mul(h_a, r_b), self.complex_mul(h_b, self.complex_conj(r_a)))
         return a, b
 
+
 class QubitMatrixMult(nn.Module):
     """
     U[r] = [[r_a, r_b],
@@ -202,13 +203,38 @@ class QubitConjugate(nn.Module):
 
 class QubitScoringAll(nn.Module):
     def forward(self, complex_numbers, embeddings):
-        e_a, e_b = embeddings
+        e_a, e_b = embeddings  # e_a |0> + e_b |1>
         out = []
-        for idx, complex_number in enumerate(list(complex_numbers)):
-            t_a, t_b = complex_number
-            a = torch.mm(t_a, e_a[idx].transpose(1, 0))
-            b = torch.mm(t_b, e_b[idx].transpose(1, 0))
-            out.append((a, b))
+        c_a, c_b = complex_numbers  # c_a |0> + c_b |1>
+
+        t_a, t_b = c_a
+        a = torch.mm(t_a, e_a[0].transpose(1, 0))
+        b = torch.mm(t_b, e_a[1].transpose(1, 0))
+        out.append((a, b))
+
+        t_a, t_b = c_b
+        a = torch.mm(t_a, e_b[0].transpose(1, 0))
+        b = torch.mm(t_b, e_b[1].transpose(1, 0))
+        out.append((a, b))
+
+        return tuple(out)
+
+
+class BatchQubitScoringAll(nn.Module):
+    def forward(self, complex_numbers, embeddings):
+        e_a, e_b = embeddings  # e_a |0> + e_b |1>  (B,N,d)
+        out = []
+        c_a, c_b = complex_numbers  # c_a |0> + c_b |1> (B,d,1)
+
+        t_a, t_b = c_a
+        a = torch.bmm(e_a[0], t_a).squeeze(dim=2)
+        b = torch.bmm(e_a[1], t_b).squeeze(dim=2)
+        out.append((a, b))
+
+        t_a, t_b = c_b
+        a = torch.bmm(e_b[0], t_a).squeeze(dim=2)
+        b = torch.bmm(e_b[1], t_b).squeeze(dim=2)
+        out.append((a, b))
         return tuple(out)
 
 

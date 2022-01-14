@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -5,14 +6,14 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from QubitE2 import QubitE
+from QubitE_best import QubitE
 from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletDatasetCachePath
-from toolbox.data.DatasetSchema import FreebaseFB15k_237
+from toolbox.data.DatasetSchema import get_dataset
 from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
 from toolbox.evaluate.Evaluate import get_score
-from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict2
+from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict2, batch_link_predict_type_constraint
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.optim.lr_scheduler import get_scheduler
@@ -34,16 +35,22 @@ class MyExperiment(Experiment):
         data.load_cache(["train_triples_ids", "test_triples_ids", "valid_triples_ids", "all_triples_ids"])
         data.load_cache(["hr_t_train"])
         data.print(self.log)
-        self.store.save_scripts(["train_QubitE.py", "QubitE2.py", "QubitEmbedding.py"])
+        self.store.save_scripts(["train_QubitE.py", "QubitE_good.py", "QubitEmbedding.py"])
         max_relation_id = data.relation_count
 
         # 1. build train dataset
         train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
+        self.entity_count = data.entity_count
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
         # 2. build valid and test dataset
         all_triples, _, _ = with_inverse_relations(data.all_triples_ids, max_relation_id)
+        self.head_type_constraint = defaultdict(list)
+        self.tail_type_constraint = defaultdict(list)
+        for h, r, t in all_triples:
+            self.head_type_constraint[r].append(h)
+            self.tail_type_constraint[r].append(t)
         hr_t = build_map_hr_t(all_triples)
         valid_data = LinkPredictDataset(data.valid_triples_ids, hr_t, max_relation_id, data.entity_count)
         test_data = LinkPredictDataset(data.test_triples_ids, hr_t, max_relation_id, data.entity_count)
@@ -68,7 +75,7 @@ class MyExperiment(Experiment):
                 self.debug("Validation (step: %d):" % start_step)
                 self.evaluate(model, valid_data, valid_dataloader, test_batch_size, max_relation_id, test_device)
                 self.debug("Test (step: %d):" % start_step)
-                self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device)
+                self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device, True)
         else:
             model.init()
             self.dump_model(model)
@@ -119,11 +126,11 @@ class MyExperiment(Experiment):
                 model.eval()
                 with torch.no_grad():
                     self.debug("Test (step: %d):" % (step + 1))
-                    result = self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device)
+                    result = self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device, True)
                     self.visual_result(step + 1, result, "Test-")
                 print("")
 
-    def evaluate(self, model, test_data, test_dataloader, test_batch_size, max_relation_id: int, device="cuda:0"):
+    def evaluate(self, model, test_data, test_dataloader, test_batch_size, max_relation_id: int, device="cuda:0", test=False):
         data = iter(test_dataloader)
 
         def predict(i):
@@ -134,17 +141,17 @@ class MyExperiment(Experiment):
             t = t.to(device)
             reverse_r = reverse_r.to(device)
             mask_for_tReverser = mask_for_tReverser.to(device)
-            pred1 = model(h, r)
-            pred2 = model(t, reverse_r)
-            pred1 = (pred1[0] + pred1[1] + pred1[2] + pred1[3]) / 4
-            pred2 = (pred2[0] + pred2[1] + pred2[2] + pred2[3]) / 4
-            return t, h, pred1, pred2, mask_for_hr, mask_for_tReverser
+            pred_tail = model(h, r)
+            pred_head = model(t, reverse_r)
+            pred_tail = (pred_tail[0] + pred_tail[1] + pred_tail[2] + pred_tail[3]) / 2
+            pred_head = (pred_head[0] + pred_head[1] + pred_head[2] + pred_head[3]) / 2
+            return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser
 
-        progbar = Progbar(max_step=len(test_data) // (test_batch_size * 10))
+        progbar = Progbar(max_step=len(test_data) // (test_batch_size * 5))
 
         def log(i, hits, hits_left, hits_right, ranks, ranks_left, ranks_right):
-            if i % (test_batch_size * 10) == 0:
-                progbar.update(i // (test_batch_size * 10), [("Hits @10", np.mean(hits[9]))])
+            if i % (test_batch_size * 5) == 0:
+                progbar.update(i // (test_batch_size * 5), [("Hits @10", np.mean(hits[9]))])
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict2(test_batch_size, len(test_data), predict, log)
         result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
@@ -152,6 +159,35 @@ class MyExperiment(Experiment):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+        if test:
+            print("")
+            self.log("with type constraint")
+            data = iter(test_dataloader)
+
+            def predict_type_constraint(i):
+                h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
+                h = h.to(device)
+                r = r.to(device)
+                mask_for_hr = mask_for_hr.to(device)
+                t = t.to(device)
+                reverse_r = reverse_r.to(device)
+                mask_for_tReverser = mask_for_tReverser.to(device)
+                pred_tail = model(h, r)
+                pred_head = model.forward_tail_batch(r, t)
+                # pred_head = model(t, reverse_r)
+                pred_tail = (pred_tail[0] + pred_tail[1] + pred_tail[2] + pred_tail[3]) / 2
+                pred_head = (pred_head[0] + pred_head[1] + pred_head[2] + pred_head[3]) / 2
+                return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser, r, reverse_r
+
+            hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(
+                self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
+            )
+            # as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+            for i in (0, 2, 9):
+                self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
+            self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
+            self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+
         return result
 
     def visual_result(self, step_num: int, result, scope: str):
@@ -212,22 +248,28 @@ def main(dataset, name,
          ):
     set_seeds()
     output = OutputSchema(dataset + "-" + name)
+    data_home = Path.home() / "data"
+    if dataset == "all":
+        datasets = [get_dataset(i, data_home) for i in ["FB15k", "FB15k-237", "WN18", "WN18RR"]]
+    else:
+        datasets = [get_dataset(dataset, data_home)]
 
-    dataset = FreebaseFB15k_237(Path.home() / "data")
-    cache = RelationalTripletDatasetCachePath(dataset.cache_path)
-    data = RelationalTripletData(dataset=dataset, cache_path=cache)
-    data.preprocess_data_if_needed()
-    data.load_cache(["meta"])
+    for i in datasets:
+        dataset = i
+        cache = RelationalTripletDatasetCachePath(dataset.cache_path)
+        data = RelationalTripletData(dataset=dataset, cache_path=cache)
+        data.preprocess_data_if_needed()
+        data.load_cache(["meta"])
 
-    MyExperiment(
-        output, data,
-        start_step, max_steps, every_test_step, every_valid_step,
-        batch_size, test_batch_size, sampling_window_size, label_smoothing,
-        train_device, test_device,
-        resume, resume_by_score,
-        lr, amsgrad, lr_decay, weight_decay,
-        edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
-    )
+        MyExperiment(
+            output, data,
+            start_step, max_steps, every_test_step, every_valid_step,
+            batch_size, test_batch_size, sampling_window_size, label_smoothing,
+            train_device, test_device,
+            resume, resume_by_score,
+            lr, amsgrad, lr_decay, weight_decay,
+            edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
+        )
 
 
 if __name__ == '__main__':
