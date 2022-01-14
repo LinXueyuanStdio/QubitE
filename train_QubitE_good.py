@@ -161,6 +161,7 @@ class MyExperiment(Experiment):
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
 
         self.log("with type constraint")
+        data = iter(test_dataloader)
         def predict_type_constraint(i):
             h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
             h = h.to(device)
