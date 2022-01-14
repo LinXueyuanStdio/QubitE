@@ -89,6 +89,8 @@ class QubitE(nn.Module):
         return self.bce(y_a, y) + self.bce(y_ai, y) + self.bce(y_b, y) + self.bce(y_bi, y)
 
     def forward_tail_batch(self, r_idx, t_idx):
+        r_idx = r_idx.view(-1)
+        t_idx = t_idx.view(-1)
         t = self.E(t_idx)
         t = self.norm(t)
         t = self.E_bn(t)
