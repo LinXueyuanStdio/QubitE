@@ -114,8 +114,8 @@ class BaseData:
         # dump key information
         dump = [
             "",
-            "----------Metadata Info for Dataset:%s----------------" % self.dataset.name,
-            "---------------------------------------------",
+            "-" * 15 + "Metadata Info for Dataset: " + self.dataset.name + "-" * (15 - len(self.dataset.name)),
+            "-" * (30 + len("Metadata Info for Dataset: ")),
             "",
         ]
         return dump
@@ -442,13 +442,13 @@ class RelationalTripletData(BaseData):
         # dump key information
         dump = [
             "",
-            "----------Metadata Info for Dataset:%s----------------" % self.dataset.name,
+            "-" * 15 + "Metadata Info for Dataset: " + self.dataset.name + "-" * (15 - len(self.dataset.name)),
             "Total Training Triples   :%s" % self.train_triples_count,
             "Total Testing Triples    :%s" % self.test_triples_count,
             "Total validation Triples :%s" % self.valid_triples_count,
             "Total Entities           :%s" % self.entity_count,
             "Total Relations          :%s" % self.relation_count,
-            "---------------------------------------------",
+            "-" * (30 + len("Metadata Info for Dataset: ")),
             "",
         ]
         return dump
@@ -1017,7 +1017,8 @@ class DBP15kData(RelationalTripletData):
     def dump(self) -> List[str]:
         dump = [
             "",
-            "----------Metadata Info for Dataset:%s----------------" % self.dataset.name,
+            "-" * 15 + "Metadata Info for Dataset: " + self.dataset.name + "-" * (15 - len(self.dataset.name)),
+
             "Total Entities           :%s" % self.entity_count,
             "Total Relations          :%s" % self.relation_count,
             "Total Attribute Names    :%s" % self.all_attribute_names_count,
@@ -1050,7 +1051,7 @@ class DBP15kData(RelationalTripletData):
             "relations         :%d" % self.kg2_relations_count,
             "attribute_names   :%d" % self.kg2_attribute_names_count,
             "attribute_values  :%d" % self.kg2_attribute_values_count,
-            "---------------------------------------------",
+            "-" * (30 + len("Metadata Info for Dataset: ")),
             "",
         ]
         return dump
