@@ -40,19 +40,17 @@ class MyExperiment(Experiment):
 
         # 1. build train dataset
         train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
-        self.head_type_constraint = defaultdict(list)
-        self.tail_type_constraint = defaultdict(list)
-        for h, r, t in train_triples:
-            self.head_type_constraint[r].append(h)
-            self.tail_type_constraint[r].append(t)
-            self.head_type_constraint[r + max_relation_id].append(t)
-            self.tail_type_constraint[r + max_relation_id].append(h)
         self.entity_count = data.entity_count
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
         # 2. build valid and test dataset
         all_triples, _, _ = with_inverse_relations(data.all_triples_ids, max_relation_id)
+        self.head_type_constraint = defaultdict(list)
+        self.tail_type_constraint = defaultdict(list)
+        for h, r, t in all_triples:
+            self.head_type_constraint[r].append(h)
+            self.tail_type_constraint[r].append(t)
         hr_t = build_map_hr_t(all_triples)
         valid_data = LinkPredictDataset(data.valid_triples_ids, hr_t, max_relation_id, data.entity_count)
         test_data = LinkPredictDataset(data.test_triples_ids, hr_t, max_relation_id, data.entity_count)
