@@ -136,8 +136,8 @@ def batch_link_predict_type_constraint(
             pred1[i, :] = pred1[i, :] * mask_for_tail_type_constraint
 
             h_idx = h[i, 0].item()
-            reverse_r_idx = reverse_r[i, 0].item()
-            constraint_idx = list(set(head_type_constraint[reverse_r_idx] + [h_idx]))
+            # reverse_r_idx = reverse_r[i, 0].item()
+            constraint_idx = list(set(head_type_constraint[r_idx] + [h_idx]))
             mask_for_head_type_constraint = torch.zeros(entity_count, device=pred2.device).long()
             mask_for_head_type_constraint[constraint_idx] = 1
             pred2[i, :] = pred2[i, :] * mask_for_head_type_constraint
