@@ -53,7 +53,7 @@ class QubitE(nn.Module):
     def __init__(self,
                  num_entities, num_relations,
                  embedding_dim,
-                 norm_flag=False, input_dropout=0.2, hidden_dropout=0.3, regularization_weight=0.1):
+                 norm_flag=False, input_dropout=0.1, hidden_dropout=0.1, regularization_weight=0.1):
         super(QubitE, self).__init__()
         self.embedding_dim = embedding_dim
         self.num_entities = num_entities

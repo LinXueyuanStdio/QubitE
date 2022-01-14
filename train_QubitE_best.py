@@ -29,7 +29,7 @@ class MyExperiment(Experiment):
                  train_device, test_device,
                  resume, resume_by_score,
                  lr, amsgrad, lr_decay, weight_decay,
-                 edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
+                 edim, rdim, input_dropout, hidden_dropout,
                  ):
         super(MyExperiment, self).__init__(output)
         data.load_cache(["train_triples_ids", "test_triples_ids", "valid_triples_ids", "all_triples_ids"])
@@ -58,7 +58,7 @@ class MyExperiment(Experiment):
         test_dataloader = DataLoader(test_data, batch_size=test_batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
         # 3. build model
-        model = QubitE(data.entity_count, 2 * data.relation_count, edim).to(train_device)
+        model = QubitE(data.entity_count, 2 * data.relation_count, edim, input_dropout=input_dropout, hidden_dropout=hidden_dropout).to(train_device)
         opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=amsgrad)
         scheduler = get_scheduler(opt, lr_policy="step")
         best_score = 0
@@ -218,11 +218,11 @@ class MyExperiment(Experiment):
 @click.option("--dataset", type=str, default="FB15k-237", help="Which dataset to use: FB15k, FB15k-237, WN18 or WN18RR.")
 @click.option("--name", type=str, default="QubitE", help="Name of the experiment.")
 @click.option("--start_step", type=int, default=0, help="start step.")
-@click.option("--max_steps", type=int, default=1000, help="Number of steps.")
+@click.option("--max_steps", type=int, default=200, help="Number of steps.")
 @click.option("--every_test_step", type=int, default=10, help="Number of steps.")
 @click.option("--every_valid_step", type=int, default=5, help="Number of steps.")
 @click.option("--batch_size", type=int, default=512, help="Batch size.")
-@click.option("--test_batch_size", type=int, default=512, help="Test batch size.")
+@click.option("--test_batch_size", type=int, default=64, help="Test batch size.")
 @click.option("--sampling_window_size", type=int, default=1000, help="Sampling window size.")
 @click.option("--label_smoothing", type=float, default=0.1, help="Amount of label smoothing.")
 @click.option("--train_device", type=str, default="cuda:0", help="choice: cuda:0, cuda:1, cpu.")
@@ -235,16 +235,15 @@ class MyExperiment(Experiment):
 @click.option('--weight_decay', type=float, default=0.0, help='Weight decay value to use in the optimizer. Default: 0.0')
 @click.option("--edim", type=int, default=200, help="Entity embedding dimensionality.")
 @click.option("--rdim", type=int, default=200, help="Relation embedding dimensionality.")
-@click.option("--input_dropout", type=float, default=0.2, help="Input layer dropout.")
-@click.option("--hidden_dropout1", type=float, default=0.2, help="Dropout after the first hidden layer.")
-@click.option("--hidden_dropout2", type=float, default=0.2, help="Dropout after the second hidden layer.")
+@click.option("--input_dropout", type=float, default=0.1, help="Input layer dropout.")
+@click.option("--hidden_dropout", type=float, default=0.1, help="Dropout after the first hidden layer.")
 def main(dataset, name,
          start_step, max_steps, every_test_step, every_valid_step,
          batch_size, test_batch_size, sampling_window_size, label_smoothing,
          train_device, test_device,
          resume, resume_by_score,
          lr, amsgrad, lr_decay, weight_decay,
-         edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
+         edim, rdim, input_dropout, hidden_dropout,
          ):
     set_seeds()
     output = OutputSchema(dataset + "-" + name)
@@ -268,7 +267,7 @@ def main(dataset, name,
             train_device, test_device,
             resume, resume_by_score,
             lr, amsgrad, lr_decay, weight_decay,
-            edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
+            edim, rdim, input_dropout, hidden_dropout,
         )
 
 
