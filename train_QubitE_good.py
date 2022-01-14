@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -12,7 +13,7 @@ from toolbox.data.LinkPredictDataset import LinkPredictDataset
 from toolbox.data.ScoringAllDataset import ScoringAllDataset
 from toolbox.data.functional import with_inverse_relations, build_map_hr_t
 from toolbox.evaluate.Evaluate import get_score
-from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict2
+from toolbox.evaluate.LinkPredict import batch_link_predict2, as_result_dict2, batch_link_predict_type_constraint
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.optim.lr_scheduler import get_scheduler
@@ -39,6 +40,12 @@ class MyExperiment(Experiment):
 
         # 1. build train dataset
         train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
+        self.head_type_constraint = defaultdict(list)
+        self.tail_type_constraint = defaultdict(list)
+        for h, r, t in train_triples:
+            self.head_type_constraint[r].append(h)
+            self.tail_type_constraint[r].append(t)
+        self.entity_count = data.entity_count
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
@@ -134,11 +141,11 @@ class MyExperiment(Experiment):
             t = t.to(device)
             reverse_r = reverse_r.to(device)
             mask_for_tReverser = mask_for_tReverser.to(device)
-            pred1 = model(h, r)
-            pred2 = model(t, reverse_r)
-            pred1 = pred1[0] + pred1[1]
-            pred2 = pred2[0] + pred2[1]
-            return t, h, pred1, pred2, mask_for_hr, mask_for_tReverser
+            pred_tail = model(h, r)
+            pred_head = model(t, reverse_r)
+            pred_tail = (pred_tail[0] + pred_tail[1]) / 2
+            pred_head = (pred_head[0] + pred_head[1]) / 2
+            return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser
 
         progbar = Progbar(max_step=len(test_data) // (test_batch_size * 5))
 
@@ -152,6 +159,31 @@ class MyExperiment(Experiment):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+
+        self.log("with type constraint")
+        def predict_type_constraint(i):
+            h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
+            h = h.to(device)
+            r = r.to(device)
+            mask_for_hr = mask_for_hr.to(device)
+            t = t.to(device)
+            reverse_r = reverse_r.to(device)
+            mask_for_tReverser = mask_for_tReverser.to(device)
+            pred_tail = model(h, r)
+            pred_head = model(t, reverse_r)
+            pred_tail = (pred_tail[0] + pred_tail[1]) / 2
+            pred_head = (pred_head[0] + pred_head[1]) / 2
+            return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser, r, reverse_r
+
+        hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(
+           self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
+        )
+        result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+        for i in (0, 2, 9):
+            self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
+        self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
+        self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+
         return result
 
     def visual_result(self, step_num: int, result, scope: str):
