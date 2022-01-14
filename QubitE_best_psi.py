@@ -145,6 +145,7 @@ class QubitE(nn.Module):
         r4 = r4.unsqueeze(dim=1)  # B, 1, d
         r = (r1, r2), (r3, r4)
         r_psi = self.R_psi(r_idx)
+        r_psi = r_psi.unsqueeze(dim=1)
 
         E = self.E.get_embeddings()
         E = self.norm(E)
