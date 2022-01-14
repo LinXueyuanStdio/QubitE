@@ -45,6 +45,8 @@ class MyExperiment(Experiment):
         for h, r, t in train_triples:
             self.head_type_constraint[r].append(h)
             self.tail_type_constraint[r].append(t)
+            self.head_type_constraint[r + max_relation_id].append(t)
+            self.tail_type_constraint[r + max_relation_id].append(h)
         self.entity_count = data.entity_count
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
@@ -162,6 +164,7 @@ class MyExperiment(Experiment):
 
         self.log("with type constraint")
         data = iter(test_dataloader)
+
         def predict_type_constraint(i):
             h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
             h = h.to(device)
@@ -177,7 +180,7 @@ class MyExperiment(Experiment):
             return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser, r, reverse_r
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(
-           self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
+            self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
         )
         result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
         for i in (0, 2, 9):
