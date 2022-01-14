@@ -182,7 +182,7 @@ class MyExperiment(Experiment):
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(
             self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
         )
-        result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+        # as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
         for i in (0, 2, 9):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
