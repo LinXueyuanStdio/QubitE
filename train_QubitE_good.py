@@ -75,7 +75,7 @@ class MyExperiment(Experiment):
                 self.debug("Validation (step: %d):" % start_step)
                 self.evaluate(model, valid_data, valid_dataloader, test_batch_size, max_relation_id, test_device)
                 self.debug("Test (step: %d):" % start_step)
-                self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device)
+                self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device, True)
         else:
             model.init()
             self.dump_model(model)
@@ -126,11 +126,11 @@ class MyExperiment(Experiment):
                 model.eval()
                 with torch.no_grad():
                     self.debug("Test (step: %d):" % (step + 1))
-                    result = self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device)
+                    result = self.evaluate(model, test_data, test_dataloader, test_batch_size, max_relation_id, test_device, True)
                     self.visual_result(step + 1, result, "Test-")
                 print("")
 
-    def evaluate(self, model, test_data, test_dataloader, test_batch_size, max_relation_id: int, device="cuda:0"):
+    def evaluate(self, model, test_data, test_dataloader, test_batch_size, max_relation_id: int, device="cuda:0", test=False):
         data = iter(test_dataloader)
 
         def predict(i):
@@ -159,32 +159,32 @@ class MyExperiment(Experiment):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+        if test:
+            self.log("with type constraint")
+            data = iter(test_dataloader)
 
-        self.log("with type constraint")
-        data = iter(test_dataloader)
+            def predict_type_constraint(i):
+                h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
+                h = h.to(device)
+                r = r.to(device)
+                mask_for_hr = mask_for_hr.to(device)
+                t = t.to(device)
+                reverse_r = reverse_r.to(device)
+                mask_for_tReverser = mask_for_tReverser.to(device)
+                pred_tail = model(h, r)
+                pred_head = model(t, reverse_r)
+                pred_tail = (pred_tail[0] + pred_tail[1]) / 2
+                pred_head = (pred_head[0] + pred_head[1]) / 2
+                return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser, r, reverse_r
 
-        def predict_type_constraint(i):
-            h, r, mask_for_hr, t, reverse_r, mask_for_tReverser = next(data)
-            h = h.to(device)
-            r = r.to(device)
-            mask_for_hr = mask_for_hr.to(device)
-            t = t.to(device)
-            reverse_r = reverse_r.to(device)
-            mask_for_tReverser = mask_for_tReverser.to(device)
-            pred_tail = model(h, r)
-            pred_head = model(t, reverse_r)
-            pred_tail = (pred_tail[0] + pred_tail[1]) / 2
-            pred_head = (pred_head[0] + pred_head[1]) / 2
-            return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser, r, reverse_r
-
-        hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(
-            self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
-        )
-        # as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
-        for i in (0, 2, 9):
-            self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
-        self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
-        self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+            hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(
+                self.entity_count, self.head_type_constraint, self.tail_type_constraint, test_batch_size, len(test_data), predict_type_constraint, log
+            )
+            # as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
+            for i in (0, 2, 9):
+                self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
+            self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
+            self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
 
         return result
 
