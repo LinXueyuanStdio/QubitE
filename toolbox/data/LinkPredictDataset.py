@@ -64,14 +64,10 @@ class LinkPredictTypeConstraintDataset(Dataset):
         reverse_r = r + self.max_relation_id
 
         tail_type_constraint_mask_for_hr = torch.zeros(self.entity_count).long()
-        # valid = list({t} | (self.r_t[r] & (self.all_entity_ids - self.hr_t[(h, r)])))
-        # valid = list(self.r_t[r])
         valid = list({t} | (self.r_t[r] - self.hr_t[(h, r)]))
         tail_type_constraint_mask_for_hr[valid] = 1
 
         tail_type_constraint_for_tReverser = torch.zeros(self.entity_count).long()
-        # valid = list({h} | (self.r_t[reverse_r] & (self.all_entity_ids - self.hr_t[(t, reverse_r)])))
-        # valid = list(self.r_t[reverse_r])
         valid = list({h} | (self.r_t[reverse_r] - self.hr_t[(t, reverse_r)]))
         tail_type_constraint_for_tReverser[valid] = 1
 
