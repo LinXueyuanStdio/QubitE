@@ -295,8 +295,8 @@ def main(dataset, name,
         keys = list(result_bracket[0].keys())
         matrix = [[avg[key] for key in keys] for avg in result_bracket]
         result_tensor = torch.Tensor(matrix)
-        result_mean = torch.mean(result_tensor, dim=1)
-        result_var = torch.var(result_tensor, dim=1)
+        result_mean = torch.mean(result_tensor, dim=0)
+        result_var = torch.var(result_tensor, dim=0)
         for idx, key in enumerate(keys):
             output.logger.info(key + "  mean=" + str(float(result_mean[idx])) + "  var=" + str(float(result_var[idx])))
 
