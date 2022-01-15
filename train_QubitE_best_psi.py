@@ -102,7 +102,7 @@ class MyExperiment(Experiment):
                 losses.append(loss.item())
                 loss.backward()
                 opt.step()
-            scheduler.step()
+            scheduler.step(step + 1)
 
             progbar.update(step + 1, [("step", step + 1), ("loss", torch.mean(torch.Tensor(losses)).item()), ("lr", torch.mean(torch.Tensor(scheduler.get_last_lr())).item())])
             if (step + 1) % every_valid_step == 0:
