@@ -40,7 +40,6 @@ class MyExperiment(Experiment):
 
         # 1. build train dataset
         train_triples, _, _ = with_inverse_relations(data.train_triples_ids, max_relation_id)
-        self.entity_count = data.entity_count
         train_data = ScoringAllDataset(train_triples, data.entity_count)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
@@ -141,7 +140,7 @@ class MyExperiment(Experiment):
             self.evaluate(model, valid_data, valid_dataloader, test_batch_size, test_device)
             self.debug("Test (step: %d):" % start_step)
             self.evaluate(model, test_data, test_dataloader, test_batch_size, test_device)
-            self.evaluate_with_type_constraint(model, test_type_constraint_data, test_type_constraint_dataloader, test_batch_size, test_device)
+            self.final_result = self.evaluate_with_type_constraint(model, test_type_constraint_data, test_type_constraint_dataloader, test_batch_size, test_device)
 
     def evaluate_with_type_constraint(self, model, test_data, test_dataloader, test_batch_size, device="cuda:0"):
         self.log("with type constraint")
@@ -168,10 +167,12 @@ class MyExperiment(Experiment):
                 progbar.update(i // (test_batch_size * 5), [("Hits @10", np.mean(hits[9]))])
 
         hits, hits_left, hits_right, ranks, ranks_left, ranks_right = batch_link_predict_type_constraint(test_batch_size, len(test_data), predict, log)
+        result = as_result_dict2((hits, hits_left, hits_right, ranks, ranks_left, ranks_right))
         for i in (0, 2, 9):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
+        return result
 
     def evaluate(self, model, test_data, test_dataloader, test_batch_size, device="cuda:0"):
         self.log("without type constraint")
@@ -203,7 +204,6 @@ class MyExperiment(Experiment):
             self.log('Hits @{0:2d}: {1:2.2%}    left: {2:2.2%}    right: {3:2.2%}'.format(i + 1, np.mean(hits[i]), np.mean(hits_left[i]), np.mean(hits_right[i])))
         self.log('Mean rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(ranks), np.mean(ranks_left), np.mean(ranks_right)))
         self.log('Mean reciprocal rank: {0:.3f}    left: {1:.3f}    right: {2:.3f}'.format(np.mean(1. / np.array(ranks)), np.mean(1. / np.array(ranks_left)), np.mean(1. / np.array(ranks_right))))
-
         return result
 
     def visual_result(self, step_num: int, result, scope: str):
@@ -253,13 +253,14 @@ class MyExperiment(Experiment):
 @click.option("--rdim", type=int, default=200, help="Relation embedding dimensionality.")
 @click.option("--input_dropout", type=float, default=0.1, help="Input layer dropout.")
 @click.option("--hidden_dropout", type=float, default=0.1, help="Dropout after the first hidden layer.")
+@click.option("--times", type=int, default=1, help="Run multi times to get error bars.")
 def main(dataset, name,
          start_step, max_steps, every_test_step, every_valid_step,
          batch_size, test_batch_size, sampling_window_size, label_smoothing,
          train_device, test_device,
          resume, resume_by_score,
          lr, amsgrad, lr_decay, weight_decay,
-         edim, rdim, input_dropout, hidden_dropout,
+         edim, rdim, input_dropout, hidden_dropout, times
          ):
     set_seeds()
     output = OutputSchema(dataset + "-" + name)
@@ -276,15 +277,27 @@ def main(dataset, name,
         data.preprocess_data_if_needed()
         data.load_cache(["meta"])
 
-        MyExperiment(
-            output, data,
-            start_step, max_steps, every_test_step, every_valid_step,
-            batch_size, test_batch_size, sampling_window_size, label_smoothing,
-            train_device, test_device,
-            resume, resume_by_score,
-            lr, amsgrad, lr_decay, weight_decay,
-            edim, rdim, input_dropout, hidden_dropout,
-        )
+        result_bracket = []
+        for _ in range(times):
+            exp = MyExperiment(
+                output, data,
+                start_step, max_steps, every_test_step, every_valid_step,
+                batch_size, test_batch_size, sampling_window_size, label_smoothing,
+                train_device, test_device,
+                resume, resume_by_score,
+                lr, amsgrad, lr_decay, weight_decay,
+                edim, rdim, input_dropout, hidden_dropout,
+            )
+            result_bracket.append(exp.final_result["average"])
+
+        keys = list(result_bracket[0].keys())
+        matrix = [[avg[key] for key in keys] for avg in result_bracket]
+        result_tensor = torch.Tensor(matrix)
+        result_mean = torch.mean(result_tensor, dim=1)
+        result_var = torch.var(result_tensor, dim=1)
+        sorted(keys)
+        for idx, key in enumerate(keys):
+            output.logger.info(key + "  mean=" + result_mean[idx] + "  var=" + result_var[idx])
 
 
 if __name__ == '__main__':
