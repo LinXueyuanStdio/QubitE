@@ -262,7 +262,6 @@ def main(dataset, name,
          lr, amsgrad, lr_decay, weight_decay,
          edim, rdim, input_dropout, hidden_dropout, times
          ):
-    set_seeds()
     output = OutputSchema(dataset + "-" + name)
     data_home = Path.home() / "data"
     if dataset == "all":
@@ -278,7 +277,10 @@ def main(dataset, name,
         data.load_cache(["meta"])
 
         result_bracket = []
-        for _ in range(times):
+        for idx in range(times):
+            seed = 10 ** idx
+            set_seeds(seed)
+            print(seed)
             exp = MyExperiment(
                 output, data,
                 start_step, max_steps, every_test_step, every_valid_step,
