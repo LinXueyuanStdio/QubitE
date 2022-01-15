@@ -41,8 +41,8 @@ class LinkPredictDataset(Dataset):
 class LinkPredictTypeConstraintDataset(Dataset):
     def __init__(self,
                  test_triples_ids: List[Tuple[int, int, int]],
-                 hr_t: Dict[Tuple[int, int], Set[int]],
                  r_t: Dict[int, Set[int]],
+                 hr_t: Dict[Tuple[int, int], Set[int]],
                  max_relation_id: int, entity_count: int):
         """
         test_triples_ids: without reverse r
