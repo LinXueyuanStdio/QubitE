@@ -131,6 +131,17 @@ class MyExperiment(Experiment):
                     self.evaluate_with_type_constraint(model, test_type_constraint_data, test_type_constraint_dataloader, test_batch_size, test_device)
                     self.visual_result(step + 1, result, "Test-")
                 print("")
+        # 5. report the best
+        start_step, _, best_score = self.store.load_best(model, opt)
+        model.eval()
+        with torch.no_grad():
+            self.debug("Reporting the best performance...")
+            self.debug("Resumed from score %.4f." % best_score)
+            self.debug("Validation (step: %d):" % start_step)
+            self.evaluate(model, valid_data, valid_dataloader, test_batch_size, test_device)
+            self.debug("Test (step: %d):" % start_step)
+            self.evaluate(model, test_data, test_dataloader, test_batch_size, test_device)
+            self.evaluate_with_type_constraint(model, test_type_constraint_data, test_type_constraint_dataloader, test_batch_size, test_device)
 
     def evaluate_with_type_constraint(self, model, test_data, test_dataloader, test_batch_size, device="cuda:0"):
         self.log("with type constraint")
