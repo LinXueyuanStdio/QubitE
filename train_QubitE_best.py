@@ -52,7 +52,7 @@ class MyExperiment(Experiment):
         hr_t = build_map_hr_t(all_triples)
         valid_data = LinkPredictDataset(data.valid_triples_ids, hr_t, max_relation_id, data.entity_count)
         test_data = LinkPredictDataset(data.test_triples_ids, hr_t, max_relation_id, data.entity_count)
-        test_type_constraint_data = LinkPredictTypeConstraintDataset(data.test_triples_ids, tail_type_constraint, max_relation_id, data.entity_count)
+        test_type_constraint_data = LinkPredictTypeConstraintDataset(data.test_triples_ids, tail_type_constraint, hr_t, max_relation_id, data.entity_count)
         valid_dataloader = DataLoader(valid_data, batch_size=test_batch_size, shuffle=False, num_workers=4, pin_memory=True)
         test_dataloader = DataLoader(test_data, batch_size=test_batch_size, shuffle=False, num_workers=4, pin_memory=True)
         test_type_constraint_dataloader = DataLoader(test_type_constraint_data, batch_size=test_batch_size, shuffle=False, num_workers=4, pin_memory=True)
