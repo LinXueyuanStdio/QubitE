@@ -37,16 +37,24 @@ class LinkPredictDataset(Dataset):
 
         return h, r, mask_for_hr, t, reverse_r, mask_for_tReverser
 
+
 class LinkPredictTypeConstraintDataset(Dataset):
-    def __init__(self, test_triples_ids: List[Tuple[int, int, int]], r_t: Dict[int, Set[int]], max_relation_id: int, entity_count: int):
+    def __init__(self,
+                 test_triples_ids: List[Tuple[int, int, int]],
+                 hr_t: Dict[Tuple[int, int], Set[int]],
+                 r_t: Dict[int, Set[int]],
+                 max_relation_id: int, entity_count: int):
         """
         test_triples_ids: without reverse r
+        hr_t: all hr->t, MUST with reverse r
         r_t: all r->t, MUST with reverse r
         """
         self.test_triples_ids = test_triples_ids
         self.r_t = r_t
+        self.hr_t = hr_t
         self.entity_count = entity_count
         self.max_relation_id = max_relation_id
+        self.all_entity_ids = set(range(self.entity_count))
 
     def __len__(self):
         return len(self.test_triples_ids)
@@ -56,10 +64,10 @@ class LinkPredictTypeConstraintDataset(Dataset):
         reverse_r = r + self.max_relation_id
 
         tail_type_constraint_mask_for_hr = torch.zeros(self.entity_count).long()
-        tail_type_constraint_mask_for_hr[list(self.r_t[r])] = 1
+        tail_type_constraint_mask_for_hr[self.r_t[r] | (self.all_entity_ids - self.hr_t[(h, r)])] = 1
 
         tail_type_constraint_for_tReverser = torch.zeros(self.entity_count).long()
-        tail_type_constraint_for_tReverser[list(self.r_t[reverse_r])] = 1
+        tail_type_constraint_for_tReverser[self.r_t[reverse_r] | (self.all_entity_ids - self.hr_t[(t, reverse_r)])] = 1
 
         h = torch.LongTensor([h])
         r = torch.LongTensor([r])
