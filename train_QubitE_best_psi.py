@@ -295,7 +295,6 @@ def main(dataset, name,
         result_tensor = torch.Tensor(matrix)
         result_mean = torch.mean(result_tensor, dim=1)
         result_var = torch.var(result_tensor, dim=1)
-        sorted(keys)
         for idx, key in enumerate(keys):
             output.logger.info(key + "  mean=" + result_mean[idx] + "  var=" + result_var[idx])
 
