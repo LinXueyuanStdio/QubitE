@@ -104,11 +104,7 @@ def batch_link_predict2(test_batch_size: int, max_iter: int, predict, log=empty_
     return hits, hits_left, hits_right, ranks, ranks_left, ranks_right
 
 
-def batch_link_predict_type_constraint(
-        entity_count: int,
-        head_type_constraint: Dict[int, List[int]],
-        tail_type_constraint: Dict[int, List[int]],
-        test_batch_size: int, max_iter: int, predict, log=empty_log2):
+def batch_link_predict_type_constraint(test_batch_size: int, max_iter: int, predict, log=empty_log2):
     hits_left = []
     hits_right = []
     hits = []
@@ -123,25 +119,9 @@ def batch_link_predict_type_constraint(
     for idx in range(0, max_iter, test_batch_size):
         t, h, pred1, pred2, truth1, truth2, r, reverse_r = predict(idx)
 
-        # 1. filter existing other answers and leave current answer for testing
-        pred1 = pred1 - pred1 * truth1
-        pred2 = pred2 - pred2 * truth2
-        # 2. type constraint
-        for i in range(h.shape[0]):
-            # 2.1. tail constraint
-            r_idx = r[i, 0].item()
-            t_idx = t[i, 0].item()
-            constraint_idx = list(set(tail_type_constraint[r_idx] + [t_idx]))
-            mask_for_tail_type_constraint = torch.zeros(entity_count, device=pred1.device).long()
-            mask_for_tail_type_constraint[constraint_idx] = 1
-            pred1[i, :] = pred1[i, :] * mask_for_tail_type_constraint  # filter tails
-            # 2.2. head constraint
-            reverse_r_idx = reverse_r[i, 0].item()
-            h_idx = h[i, 0].item()
-            constraint_idx = list(set(tail_type_constraint[reverse_r_idx] + [h_idx]))
-            mask_for_head_type_constraint = torch.zeros(entity_count, device=pred2.device).long()
-            mask_for_head_type_constraint[constraint_idx] = 1
-            pred2[i, :] = pred2[i, :] * mask_for_head_type_constraint  # filter heads
+        # 1. type constraint
+        pred1 = pred1 * truth1
+        pred2 = pred2 * truth2
 
         # 3. sort and rank
         max_values, argsort1 = torch.sort(pred1, 1, descending=True)
