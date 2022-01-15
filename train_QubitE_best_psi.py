@@ -298,7 +298,7 @@ def main(dataset, name,
         result_mean = torch.mean(result_tensor, dim=1)
         result_var = torch.var(result_tensor, dim=1)
         for idx, key in enumerate(keys):
-            output.logger.info(key + "  mean=" + result_mean[idx] + "  var=" + result_var[idx])
+            output.logger.info(key + "  mean=" + str(float(result_mean[idx])) + "  var=" + str(float(result_var[idx])))
 
 
 if __name__ == '__main__':
