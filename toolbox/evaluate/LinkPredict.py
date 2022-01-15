@@ -117,7 +117,7 @@ def batch_link_predict_type_constraint(test_batch_size: int, max_iter: int, pred
         hits.append([])
 
     for idx in range(0, max_iter, test_batch_size):
-        t, h, pred1, pred2, truth1, truth2, r, reverse_r = predict(idx)
+        t, h, pred1, pred2, truth1, truth2 = predict(idx)
 
         # 1. type constraint
         pred1 = pred1 * truth1
