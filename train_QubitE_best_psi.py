@@ -173,8 +173,8 @@ class MyExperiment(Experiment):
                 reverse_r = reverse_r.to(device)
                 mask_for_tReverser = mask_for_tReverser.to(device)
                 pred_tail = model(h, r)
-                pred_head = model.forward_tail_batch(r, t)
-                # pred_head = model(t, reverse_r)
+                # pred_head = model.forward_tail_batch(r, t)
+                pred_head = model(t, reverse_r)
                 pred_tail = (pred_tail[0] + pred_tail[1] + pred_tail[2] + pred_tail[3]) / 2
                 pred_head = (pred_head[0] + pred_head[1] + pred_head[2] + pred_head[3]) / 2
                 return t, h, pred_tail, pred_head, mask_for_hr, mask_for_tReverser, r, reverse_r
