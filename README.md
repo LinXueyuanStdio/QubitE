@@ -10,10 +10,9 @@ code for "QubitE: Qubit Embedding for Knowledge Graph Completion".
 
 QubitE with $\psi != 0$ :
 ```shell
-python train_QubitE_best_psi.py --name="Qubit_psi" --dataset="all"
+python train_QubitE_best_psi.py --name="QubitE_psi"
 ```
 QubitE with $\psi = 0$ :
 ```shell
-python train_QubitE_best.py --name="Qubit" --dataset="all"
+python train_QubitE_best.py --name="QubitE"
 ```
-
