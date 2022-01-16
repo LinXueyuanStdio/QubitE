@@ -2,12 +2,10 @@
 @author: lxy
 @email: linxy59@mail2.sysu.edu.cn
 @date: 2021/10/14
-@description: null
+@description: psi = 0
 """
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from QubitEmbedding import QubitBatchNorm1d, QubitDropout, QubitEmbedding, QubitScoringAll, QubitNorm, QubitMult, BatchQubitScoringAll
 from toolbox.nn.ComplexEmbedding import ComplexAlign
@@ -36,12 +34,9 @@ class QubitE(nn.Module):
         self.b_x = nn.Parameter(torch.zeros(num_entities))
         self.b_y = nn.Parameter(torch.zeros(num_entities))
         self.b_z = nn.Parameter(torch.zeros(num_entities))
-        # self.proj_t = QubitProjection(self.embedding_dim, self.embedding_dim)
         self.norm = QubitNorm()
 
         self.mul = QubitMult(norm_flag)
-        # self.mul = QubitMatrixMult(norm_flag)
-        # self.mul = QubitUnitaryMult(norm_flag)
         self.scoring_all = QubitScoringAll()
         self.batch_scoring_all = BatchQubitScoringAll()
         self.align = ComplexAlign()
@@ -64,13 +59,10 @@ class QubitE(nn.Module):
         h = self.norm(h)
         h = self.E_bn(h)
         r = self.norm(r)
-        # r = self.R_bn(r)
         t = self.mul(h, r)
-        # t = self.proj_t(t)
 
         E = self.E.get_embeddings()
         E = self.norm(E)
-        # E = self.proj_h(E)
         E = self.E_bn(E)
 
         score_a, score_b = self.scoring_all(self.E_dropout(t), self.E_dropout(E))
@@ -132,38 +124,6 @@ class QubitE(nn.Module):
 
         return y_a, y_ai, y_b, y_bi
 
-    def regular_loss(self, h_idx, r_idx, t_idx):
-        h = self.E(h_idx)
-        r = self.R(r_idx)
-        t = self.E(t_idx)
-        (h_a, h_a_i), (h_b, h_b_i) = h
-        (r_a, r_a_i), (r_b, r_b_i) = r
-        (t_a, t_a_i), (t_b, t_b_i) = t
-        factors = (
-            torch.sqrt(h_a ** 2 + h_a_i ** 2 + h_b ** 2 + h_b_i ** 2),
-            torch.sqrt(r_a ** 2 + r_a_i ** 2 + r_b ** 2 + r_b_i ** 2),
-            torch.sqrt(t_a ** 2 + t_a_i ** 2 + t_b ** 2 + t_b_i ** 2),
-        )
-        regular_loss = self.regularizer(factors)
-        return regular_loss
-
-    def reverse_loss(self, h_idx, r_idx, max_relation_idx):
-        h = self.E(h_idx)
-        h_a, h_b = h
-        h = (h_a.detach(), h_b.detach())
-
-        r = self.R(r_idx)
-        reverse_rel_idx = (r_idx + max_relation_idx) % (2 * max_relation_idx)
-
-        t = self.mul(h, r)
-        reverse_r = self.R(reverse_rel_idx)
-        reverse_t = self.mul(t, reverse_r)
-        reverse_a, reverse_b = self.align(reverse_t, h)  # a + b i
-        reverse_score = reverse_a + reverse_b
-        reverse_score = torch.mean(F.relu(reverse_score))
-
-        return reverse_score
-
     def init(self):
         self.E.init()
         self.R.init()
@@ -183,4 +143,3 @@ if __name__ == "__main__":
     pred = model(h, r)
     print(pred)
     print(model.loss(pred, target))
-    print(model.regular_loss(h, r, t))
