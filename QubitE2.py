@@ -27,7 +27,6 @@ class QubitE(nn.Module):
         self.R = QubitEmbedding(self.num_relations, self.embedding_dim, 2)  # alpha = a + bi, beta = c + di
         self.E_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
         self.R_dropout = QubitDropout([[input_dropout, input_dropout]] * 2)
-        self.hidden_dp = QubitDropout([[hidden_dropout, hidden_dropout]] * 2)
         self.E_bn = QubitBatchNorm1d(self.embedding_dim, 2)
         self.R_bn = QubitBatchNorm1d(self.embedding_dim, 4)
         self.b_a = nn.Parameter(torch.zeros(num_entities))
@@ -55,10 +54,12 @@ class QubitE(nn.Module):
         Given a batch of head entities and relations => shape (size of batch,| Entities|)
         """
         h = self.E(h_idx)
-        r = self.R(r_idx)
         h = self.norm(h)
         h = self.E_bn(h)
+
+        r = self.R(r_idx)
         r = self.norm(r)
+
         t = self.mul(h, r)
 
         E = self.E.get_embeddings()

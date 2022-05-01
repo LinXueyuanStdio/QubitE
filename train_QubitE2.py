@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from QubitE_best import QubitE
+from QubitE2 import QubitE
 from toolbox.data.DataSchema import RelationalTripletData, RelationalTripletDatasetCachePath
 from toolbox.data.DatasetSchema import get_dataset
 from toolbox.data.LinkPredictDataset import LinkPredictDataset, LinkPredictTypeConstraintDataset
